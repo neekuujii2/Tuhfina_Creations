@@ -82,7 +82,8 @@ export default function UserDashboard() {
                 Order Placed Successfully!
               </h3>
               <p className="text-green-700">
-                Thank you for your order. We'll send you updates about your order status.
+                Thank you for your order. We&apos;ll send you updates about your order status.
+
               </p>
             </div>
           </div>
