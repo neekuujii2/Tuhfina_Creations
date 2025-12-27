@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,7 +8,7 @@ import { Product, CATEGORIES } from '@/lib/types';
 import { productService } from '@/lib/services/productService';
 import { ShoppingCart, Heart } from 'lucide-react';
 
-export default function ShopPage() {
+function ShopContent() {
     const searchParams = useSearchParams();
     const categoryParam = searchParams.get('category');
 
@@ -58,8 +58,8 @@ export default function ShopPage() {
                         <button
                             onClick={() => setSelectedCategory('all')}
                             className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${selectedCategory === 'all'
-                                    ? 'bg-luxury-gold text-white shadow-lg'
-                                    : 'bg-white text-luxury-gray border border-gray-300 hover:border-luxury-gold'
+                                ? 'bg-luxury-gold text-white shadow-lg'
+                                : 'bg-white text-luxury-gray border border-gray-300 hover:border-luxury-gold'
                                 }`}
                         >
                             All Products
@@ -69,8 +69,8 @@ export default function ShopPage() {
                                 key={category}
                                 onClick={() => setSelectedCategory(category)}
                                 className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${selectedCategory === category
-                                        ? 'bg-luxury-gold text-white shadow-lg'
-                                        : 'bg-white text-luxury-gray border border-gray-300 hover:border-luxury-gold'
+                                    ? 'bg-luxury-gold text-white shadow-lg'
+                                    : 'bg-white text-luxury-gray border border-gray-300 hover:border-luxury-gold'
                                     }`}
                             >
                                 {category}
@@ -148,5 +148,13 @@ export default function ShopPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function ShopPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+            <ShopContent />
+        </Suspense>
     );
 }

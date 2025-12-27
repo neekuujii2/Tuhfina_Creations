@@ -41,6 +41,11 @@ export interface Order {
     }[];
     totalAmount: number;
     status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+    paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
+    razorpaySignature?: string;
+    invoiceUrl?: string;
     createdAt: Date;
     userEmail?: string;
     shippingAddress?: {

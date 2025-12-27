@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,12 +8,12 @@ import { orderService } from '@/lib/services/orderService';
 import { Order } from '@/lib/types';
 import { Package, User, CheckCircle } from 'lucide-react';
 
-export default function UserDashboard() {
+function DashboardContent() {
   const { user, isAdmin } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderSuccess = searchParams.get('orderSuccess');
-  
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +33,7 @@ export default function UserDashboard() {
 
   const loadOrders = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
       const userOrders = await orderService.getUserOrders(user.uid);
@@ -165,9 +165,22 @@ export default function UserDashboard() {
                       >
                         {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                       </span>
-                      <span className="text-xl font-bold text-luxury-gold">
-                        ₹{order.totalAmount}
-                      </span>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="text-xl font-bold text-luxury-gold">
+                          ₹{order.totalAmount}
+                        </span>
+                        {order.invoiceUrl && (
+                          <a
+                            href={order.invoiceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs flex items-center gap-1 text-luxury-black hover:text-luxury-gold underline"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+                            Download Invoice
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -231,5 +244,13 @@ export default function UserDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UserDashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-luxury-gold border-t-transparent"></div></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

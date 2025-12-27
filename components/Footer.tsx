@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Facebook, Instagram, Mail, Phone, MapPin } from 'lucide-react';
 
 export default function Footer() {
@@ -8,9 +9,12 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
                     {/* Brand */}
                     <div>
-                        <h3 className="text-2xl font-serif font-bold luxury-text-gradient mb-4">
-                            Tuhfina Creation
-                        </h3>
+                        <Link href="/" className="flex items-center space-x-2 mb-4">
+                            <Image src="/logo.jpg" alt="Tuhfina Creation Logo" width={50} height={50} className="rounded-full object-cover" />
+                            <h3 className="text-2xl font-serif font-bold luxury-text-gradient">
+                                Tuhfina Creation
+                            </h3>
+                        </Link>
                         <p className="text-gray-400 text-sm leading-relaxed">
                             Crafting luxury and memories with handcrafted gifts, customized treasures, and exquisite floral arrangements.
                         </p>
@@ -64,7 +68,7 @@ export default function Footer() {
                             </li>
                             <li className="flex items-start space-x-2 text-gray-400 text-sm">
                                 <Phone size={16} className="mt-1 flex-shrink-0" />
-                                <span>+91 XXX XXX XXXX</span>
+                                <span>+91 9873531273</span>
                             </li>
                             <li className="flex items-start space-x-2 text-gray-400 text-sm">
                                 <MapPin size={16} className="mt-1 flex-shrink-0" />

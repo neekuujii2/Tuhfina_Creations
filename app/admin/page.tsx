@@ -418,6 +418,33 @@ export default function AdminDashboard() {
                                                 </p>
                                             </div>
                                         )}
+                                        <div className="border-t border-gray-200 pt-4 mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div>
+                                                <h4 className="font-semibold mb-2 text-sm text-gray-500">Payment Status</h4>
+                                                <p className={`font-bold ${order.paymentStatus === 'PAID' ? 'text-green-600' : 'text-yellow-600'}`}>
+                                                    {order.paymentStatus || 'PENDING'}
+                                                </p>
+                                            </div>
+                                            {order.razorpayPaymentId && (
+                                                <div>
+                                                    <h4 className="font-semibold mb-2 text-sm text-gray-500">Payment ID</h4>
+                                                    <p className="font-mono text-sm">{order.razorpayPaymentId}</p>
+                                                </div>
+                                            )}
+                                            {order.invoiceUrl && (
+                                                <div>
+                                                    <h4 className="font-semibold mb-2 text-sm text-gray-500">Invoice</h4>
+                                                    <a
+                                                        href={order.invoiceUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-luxury-gold hover:underline text-sm font-semibold flex items-center"
+                                                    >
+                                                        Download PDF
+                                                    </a>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>

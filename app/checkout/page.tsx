@@ -3,12 +3,13 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Script from 'next/script';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { productService } from '@/lib/services/productService';
 import { orderService } from '@/lib/services/orderService';
 import { Product, Order } from '@/lib/types';
-import { CheckCircle } from 'lucide-react';
+import { NEXT_PUBLIC_RAZORPAY_KEY_ID } from '@/lib/clientConfig';
 
 interface CartItemWithDetails {
     productId: string;
@@ -18,6 +19,12 @@ interface CartItemWithDetails {
         text?: string;
         imageUrl?: string;
     };
+}
+
+declare global {
+    interface Window {
+        Razorpay: any;
+    }
 }
 
 export default function CheckoutPage() {
@@ -68,6 +75,85 @@ export default function CheckoutPage() {
         0
     );
 
+    const handlePayment = async (orderId: string, amount: number) => {
+        try {
+            // 1. Create Razorpay Order on Server
+            const response = await fetch('/api/razorpay/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount, orderId }),
+            });
+            const data = await response.json();
+
+            if (!data.id) {
+                throw new Error('Server error in creating Razorpay order');
+            }
+
+            // 2. Open Razorpay Checkout
+            const options = {
+                key: NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                amount: data.amount,
+                currency: data.currency,
+                name: 'Tuhfina Creation',
+                description: 'Luxury Gift Purchase',
+                // image: 'YOUR_LOGO_URL', // Should come from assets, using brand name for now
+                order_id: data.id,
+                handler: async function (response: any) {
+                    // 3. Verify Payment
+                    try {
+                        const verifyRes = await fetch('/api/razorpay/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                                orderId: orderId,
+                            }),
+                        });
+
+                        const verifyData = await verifyRes.json();
+
+                        if (verifyData.success) {
+                            clearCart();
+                            router.push('/dashboard?orderSuccess=true');
+                        } else {
+                            alert('Payment verification failed. Please contact support.');
+                        }
+                    } catch (error) {
+                        console.error('Verification error:', error);
+                        alert('Payment verification error.');
+                    }
+                },
+                prefill: {
+                    name: name,
+                    email: user?.email,
+                    contact: phone,
+                },
+                theme: {
+                    color: '#D4AF37', // Luxury Gold
+                },
+                modal: {
+                    ondismiss: function () {
+                        setSubmitting(false);
+                    }
+                }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response: any) {
+                alert('Payment Failed: ' + response.error.description);
+                setSubmitting(false);
+            });
+            rzp.open();
+
+        } catch (error) {
+            console.error('Payment initialization failed:', error);
+            alert('Could not start payment. Please try again.');
+            setSubmitting(false);
+        }
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
@@ -80,9 +166,10 @@ export default function CheckoutPage() {
         setSubmitting(true);
 
         try {
+            // 0. Create Pending Order in Firestore
             const orderData: Omit<Order, 'id' | 'createdAt'> = {
                 userId: user.uid,
-                userEmail: user.email,
+                userEmail: user.email!,
                 items: cartItems.map(item => ({
                     productId: item.productId,
                     title: item.product.title,
@@ -101,15 +188,17 @@ export default function CheckoutPage() {
                     pincode,
                     phone,
                 },
-            };
+                paymentStatus: 'PENDING'
+            } as any; // Cast to any because Order type might not be updated yet
 
-            await orderService.createOrder(orderData);
-            clearCart();
-            router.push('/dashboard?orderSuccess=true');
+            const orderId = await orderService.createOrder(orderData);
+
+            // Proceed to Payment
+            await handlePayment(orderId, total);
+
         } catch (error) {
             console.error('Error creating order:', error);
             alert('Failed to create order. Please try again.');
-        } finally {
             setSubmitting(false);
         }
     };
@@ -129,6 +218,7 @@ export default function CheckoutPage() {
 
     return (
         <div className="bg-white min-h-screen">
+            <Script src="https://checkout.razorpay.com/v1/checkout.js" />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
                 <h1 className="text-4xl font-serif font-bold text-luxury-black mb-12">
                     Checkout
@@ -232,10 +322,13 @@ export default function CheckoutPage() {
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="w-full btn-luxury disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full btn-luxury disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider font-semibold py-4"
                                 >
-                                    {submitting ? 'Placing Order...' : 'Place Order'}
+                                    {submitting ? 'Processing Payment...' : 'Pay & Place Order'}
                                 </button>
+                                <p className="text-xs text-center text-gray-500 mt-2">
+                                    Secured by Razorpay. UPI, Cards & Netbanking accepted.
+                                </p>
                             </form>
                         </div>
                     </div>
