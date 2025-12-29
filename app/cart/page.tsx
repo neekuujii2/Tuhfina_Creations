@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-// import Image from 'next/image'; // Removed for Cloudinary migration
+import Image from 'next/image';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { productService } from '@/lib/services/productService';
@@ -27,11 +27,7 @@ export default function CartPage() {
     const [cartItems, setCartItems] = useState<CartItemWithDetails[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadCartDetails();
-    }, [cart]);
-
-    const loadCartDetails = async () => {
+    const loadCartDetails = useCallback(async () => {
         setLoading(true);
         const itemsWithDetails: CartItemWithDetails[] = [];
 
@@ -47,7 +43,11 @@ export default function CartPage() {
 
         setCartItems(itemsWithDetails);
         setLoading(false);
-    };
+    }, [cart]);
+
+    useEffect(() => {
+        loadCartDetails();
+    }, [loadCartDetails]);
 
     const total = cartItems.reduce(
         (sum, item) => sum + item.product.price * item.quantity,
@@ -108,13 +108,11 @@ export default function CartPage() {
                                     {/* Product Image */}
                                     <div className="relative h-32 w-32 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
                                         {item.product.images && item.product.images.length > 0 ? (
-                                            <img
+                                            <Image
                                                 src={item.product.images[0]}
                                                 alt={item.product.title}
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).src = '/placeholder.png';
-                                                }}
+                                                fill
+                                                className="object-cover"
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-4xl">

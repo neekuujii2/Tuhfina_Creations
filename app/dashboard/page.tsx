@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-// import Image from 'next/image'; // Removed for Cloudinary migration
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { orderService } from '@/lib/services/orderService';
 import { Order } from '@/lib/types';
@@ -17,21 +17,7 @@ function DashboardContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-
-    if (isAdmin) {
-      router.push('/admin');
-      return;
-    }
-
-    loadOrders();
-  }, [user, isAdmin]);
-
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -43,7 +29,23 @@ function DashboardContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user === null && !loading) {
+      router.push('/login');
+      return;
+    }
+
+    if (isAdmin) {
+      router.push('/admin');
+      return;
+    }
+
+    if (user) {
+      loadOrders();
+    }
+  }, [user, isAdmin, loadOrders, router]);
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -190,13 +192,11 @@ function DashboardContent() {
                       <div key={index} className="flex gap-4">
                         <div className="relative h-20 w-20 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
                           {item.imageUrl ? (
-                            <img
+                            <Image
                               src={item.imageUrl}
                               alt={item.title}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/placeholder.png';
-                              }}
+                              fill
+                              className="object-cover"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-2xl">

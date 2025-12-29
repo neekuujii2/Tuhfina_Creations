@@ -1,3 +1,10 @@
+export interface Category {
+    _id?: string;
+    name: string;
+    image?: string;
+    description?: string;
+}
+
 export interface User {
     uid: string;
     email: string;

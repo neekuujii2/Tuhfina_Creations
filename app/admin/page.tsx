@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { productService } from '@/lib/services/productService';
 import { orderService } from '@/lib/services/orderService';
 import { Product, Order, CATEGORIES } from '@/lib/types';
-// import Image from 'next/image'; // Removed as per requirement
+import Image from 'next/image';
 import {
     Plus,
     Package,
@@ -22,9 +22,10 @@ export default function AdminDashboard() {
     const { user, isAdmin, loading: authLoading } = useAuth();
     const router = useRouter();
 
-    const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
+    const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'categories'>('products');
     const [products, setProducts] = useState<Product[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
+    const [dbCategories, setDbCategories] = useState<any[]>([]);
     const [pageLoading, setPageLoading] = useState(true);
 
     // Product Form State
@@ -50,6 +51,24 @@ export default function AdminDashboard() {
     const [csvProcessing, setCsvProcessing] = useState(false);
     const [csvProgress, setCsvProgress] = useState({ current: 0, total: 0 });
 
+    const loadData = useCallback(async () => {
+        setPageLoading(true);
+        try {
+            const [productsData, ordersData, categoriesData] = await Promise.all([
+                productService.getAllProducts(),
+                orderService.getAllOrders(),
+                fetch('/api/categories').then(res => res.json()),
+            ]);
+            setProducts(productsData);
+            setOrders(ordersData);
+            setDbCategories(categoriesData);
+        } catch (error) {
+            console.error('Error loading data:', error);
+        } finally {
+            setPageLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (authLoading) return;
 
@@ -64,23 +83,7 @@ export default function AdminDashboard() {
         }
 
         loadData();
-    }, [user, isAdmin, authLoading]);
-
-    const loadData = async () => {
-        setPageLoading(true);
-        try {
-            const [productsData, ordersData] = await Promise.all([
-                productService.getAllProducts(),
-                orderService.getAllOrders(),
-            ]);
-            setProducts(productsData);
-            setOrders(ordersData);
-        } catch (error) {
-            console.error('Error loading data:', error);
-        } finally {
-            setPageLoading(false);
-        }
-    };
+    }, [user, isAdmin, authLoading, loadData, router]);
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
@@ -280,6 +283,44 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleCategoryImageUpdate = async (categoryName: string, e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setPageLoading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const uploadRes = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!uploadRes.ok) throw new Error('Failed to upload image');
+            const uploadData = await uploadRes.json();
+            const imageUrl = uploadData.urls[0];
+
+            const saveRes = await fetch('/api/categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: categoryName,
+                    image: imageUrl,
+                }),
+            });
+
+            if (!saveRes.ok) throw new Error('Failed to save category');
+            alert('Category image updated successfully');
+            loadData();
+        } catch (error) {
+            console.error('Error updating category image:', error);
+            alert('Failed to update category image');
+        } finally {
+            setPageLoading(false);
+        }
+    };
+
     if (pageLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -354,6 +395,15 @@ export default function AdminDashboard() {
                     >
                         Orders
                     </button>
+                    <button
+                        onClick={() => setActiveTab('categories')}
+                        className={`pb-4 px-6 font-semibold transition-colors ${activeTab === 'categories'
+                            ? 'text-luxury-gold border-b-2 border-luxury-gold'
+                            : 'text-luxury-gray hover:text-luxury-gold'
+                            }`}
+                    >
+                        Categories
+                    </button>
                 </div>
 
                 {/* Products Tab */}
@@ -403,13 +453,11 @@ export default function AdminDashboard() {
                                 >
                                     <div className="relative h-48 bg-gray-100">
                                         {product.images && product.images.length > 0 ? (
-                                            <img
+                                            <Image
                                                 src={product.images[0]}
                                                 alt={product.title}
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).src = '/placeholder.png';
-                                                }}
+                                                fill
+                                                className="object-cover"
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-6xl">
@@ -570,6 +618,45 @@ export default function AdminDashboard() {
                         )}
                     </div>
                 )}
+
+                {/* Categories Tab */}
+                {activeTab === 'categories' && (
+                    <div>
+                        <h2 className="text-2xl font-serif font-bold mb-8">Manage Category Images</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {CATEGORIES.map((catName) => {
+                                const dbCat = dbCategories.find(c => c.name === catName);
+                                return (
+                                    <div key={catName} className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col items-center">
+                                        <div className="relative h-40 w-full mb-4 bg-luxury-cream rounded-md overflow-hidden flex items-center justify-center">
+                                            {dbCat?.image ? (
+                                                <img src={dbCat.image} alt={catName} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span className="text-4xl">
+                                                    {catName.includes('Flower') ? '🌸' :
+                                                        catName.includes('Earring') ? '💎' :
+                                                            catName.includes('Frame') ? '🖼️' :
+                                                                catName.includes('Keychain') ? '🔑' :
+                                                                    catName.includes('Diwali') ? '🪔' : '🎁'}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h3 className="font-serif font-semibold text-lg mb-4">{catName}</h3>
+                                        <label className="btn-outline-luxury text-sm cursor-pointer w-full text-center">
+                                            <span>Update Image</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={(e) => handleCategoryImageUpdate(catName, e)}
+                                            />
+                                        </label>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Product Modal */}
@@ -691,10 +778,11 @@ export default function AdminDashboard() {
                                         <div className="grid grid-cols-4 gap-4 mt-4">
                                             {imagePreviews.map((preview, index) => (
                                                 <div key={index} className="relative h-24 rounded overflow-hidden">
-                                                    <img
+                                                    <Image
                                                         src={preview}
                                                         alt={`Preview ${index + 1}`}
-                                                        className="w-full h-full object-cover"
+                                                        fill
+                                                        className="object-cover"
                                                         onError={(e) => {
                                                             (e.target as HTMLImageElement).src = '/placeholder.png';
                                                         }}

@@ -38,6 +38,12 @@ export default function Navbar() {
                         >
                             Shop
                         </Link>
+                        <Link
+                            href="/about"
+                            className="text-luxury-gray hover:text-luxury-gold transition-colors font-medium"
+                        >
+                            Our Story
+                        </Link>
 
                         {user && (
                             <>
@@ -119,6 +125,13 @@ export default function Navbar() {
                             onClick={() => setMobileMenuOpen(false)}
                         >
                             Shop
+                        </Link>
+                        <Link
+                            href="/about"
+                            className="block py-2 text-luxury-gray hover:text-luxury-gold transition-colors"
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            Our Story
                         </Link>
 
                         {user ? (

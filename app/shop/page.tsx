@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-// import Image from 'next/image'; // Removed for Cloudinary migration
+import Image from 'next/image';
 import { Product, CATEGORIES } from '@/lib/types';
 import { productService } from '@/lib/services/productService';
 import { ShoppingCart, Heart } from 'lucide-react';
@@ -16,11 +16,7 @@ function ShopContent() {
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam || 'all');
 
-    useEffect(() => {
-        loadProducts();
-    }, [selectedCategory]);
-
-    const loadProducts = async () => {
+    const loadProducts = useCallback(async () => {
         setLoading(true);
         try {
             let fetchedProducts;
@@ -35,7 +31,11 @@ function ShopContent() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedCategory]);
+
+    useEffect(() => {
+        loadProducts();
+    }, [loadProducts]);
 
     return (
         <div className="bg-white">
@@ -100,13 +100,12 @@ function ShopContent() {
                             >
                                 <div className="relative h-64 bg-gray-100 overflow-hidden">
                                     {product.images && product.images.length > 0 ? (
-                                        <img
+                                        <Image
                                             src={product.images[0]}
                                             alt={product.title}
+                                            fill
                                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                            onError={(e) => {
-                                                (e.target as HTMLImageElement).src = '/placeholder.png';
-                                            }}
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                         />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-6xl">

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-// import Image from 'next/image'; // Removed for Cloudinary migration
+import Image from 'next/image';
 import { Product } from '@/lib/types';
 import { productService } from '@/lib/services/productService';
 import { useCart } from '@/contexts/CartContext';
@@ -28,11 +28,7 @@ export default function ProductPage() {
     const { addToCart } = useCart();
     const { user } = useAuth();
 
-    useEffect(() => {
-        loadProduct();
-    }, [productId]);
-
-    const loadProduct = async () => {
+    const loadProduct = useCallback(async () => {
         setLoading(true);
         try {
             const fetchedProduct = await productService.getProduct(productId);
@@ -42,7 +38,11 @@ export default function ProductPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [productId]);
+
+    useEffect(() => {
+        loadProduct();
+    }, [loadProduct]);
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -130,10 +130,12 @@ export default function ProductPage() {
                     <div>
                         <div className="relative h-96 lg:h-[500px] bg-gray-100 rounded-lg overflow-hidden mb-4">
                             {product.images && product.images.length > 0 ? (
-                                <img
+                                <Image
                                     src={product.images[selectedImage]}
                                     alt={product.title}
-                                    className="w-full h-full object-cover"
+                                    fill
+                                    className="object-cover"
+                                    priority
                                     onError={(e) => {
                                         (e.target as HTMLImageElement).src = '/placeholder.png';
                                     }}
@@ -156,10 +158,11 @@ export default function ProductPage() {
                                             : 'border-gray-200 hover:border-luxury-gold'
                                             }`}
                                     >
-                                        <img
+                                        <Image
                                             src={image}
-                                            alt={`${product.title} ${index + 1}`}
-                                            className="w-full h-full object-cover"
+                                            alt={`${product.title} thumbnail ${index + 1}`}
+                                            fill
+                                            className="object-cover"
                                             onError={(e) => {
                                                 (e.target as HTMLImageElement).src = '/placeholder.png';
                                             }}

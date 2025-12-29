@@ -1,8 +1,19 @@
 import Link from 'next/link';
 import { Sparkles, Heart, Gift, Star } from 'lucide-react';
-import { CATEGORIES } from '@/lib/types';
+import Image from 'next/image';
+import dbConnect from '@/lib/mongodb';
+import CategoryModel from '@/models/Category';
+import { CATEGORIES, Category } from '@/lib/types';
 
-export default function HomePage() {
+export default async function HomePage() {
+    let categories: Category[] = [];
+    try {
+        await dbConnect();
+        categories = await CategoryModel.find({}).lean();
+    } catch (error) {
+        console.error('Error fetching categories:', error);
+    }
+
     return (
         <div className="bg-white">
             {/* Hero Section */}
@@ -80,28 +91,65 @@ export default function HomePage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {CATEGORIES.map((category, index) => (
-                            <Link
-                                key={index}
-                                href={`/shop?category=${encodeURIComponent(category)}`}
-                                className="group bg-white p-8 rounded-lg card-hover text-center border border-gray-200"
-                            >
-                                <div className="h-16 flex items-center justify-center mb-4">
-                                    <div className="w-16 h-16 bg-luxury-cream rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                                        <span className="text-2xl">
-                                            {category.includes('Flower') ? '🌸' :
-                                                category.includes('Earring') ? '💎' :
-                                                    category.includes('Frame') ? '🖼️' :
-                                                        category.includes('Keychain') ? '🔑' :
-                                                            category.includes('Diwali') ? '🪔' : '🎁'}
-                                        </span>
+                        {categories.length > 0 ? (
+                            categories.map((category: any, index: number) => (
+                                <Link
+                                    key={index}
+                                    href={`/shop?category=${encodeURIComponent(category.name)}`}
+                                    className="group bg-white rounded-lg overflow-hidden card-hover border border-gray-200 flex flex-col"
+                                >
+                                    <div className="relative h-64 w-full bg-gray-100">
+                                        {category.image ? (
+                                            <Image
+                                                src={category.image}
+                                                alt={category.name}
+                                                fill
+                                                className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-luxury-cream">
+                                                <span className="text-4xl">
+                                                    {category.name.includes('Flower') ? '🌸' :
+                                                        category.name.includes('Earring') ? '💎' :
+                                                            category.name.includes('Frame') ? '🖼️' :
+                                                                category.name.includes('Keychain') ? '🔑' :
+                                                                    category.name.includes('Diwali') ? '🪔' : '🎁'}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                                <h3 className="font-serif font-semibold text-lg text-luxury-black group-hover:text-luxury-gold transition-colors">
-                                    {category}
-                                </h3>
-                            </Link>
-                        ))}
+                                    <div className="p-6 text-center">
+                                        <h3 className="font-serif font-semibold text-lg text-luxury-black group-hover:text-luxury-gold transition-colors">
+                                            {category.name}
+                                        </h3>
+                                    </div>
+                                </Link>
+                            ))
+                        ) : (
+                            // Fallback to static categories if DB is empty
+                            CATEGORIES.map((category, index) => (
+                                <Link
+                                    key={index}
+                                    href={`/shop?category=${encodeURIComponent(category)}`}
+                                    className="group bg-white p-8 rounded-lg card-hover text-center border border-gray-200"
+                                >
+                                    <div className="h-16 flex items-center justify-center mb-4">
+                                        <div className="w-16 h-16 bg-luxury-cream rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                            <span className="text-2xl">
+                                                {category.includes('Flower') ? '🌸' :
+                                                    category.includes('Earring') ? '💎' :
+                                                        category.includes('Frame') ? '🖼️' :
+                                                            category.includes('Keychain') ? '🔑' :
+                                                                category.includes('Diwali') ? '🪔' : '🎁'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <h3 className="font-serif font-semibold text-lg text-luxury-black group-hover:text-luxury-gold transition-colors">
+                                        {category}
+                                    </h3>
+                                </Link>
+                            ))
+                        )}
                     </div>
                 </div>
             </section>

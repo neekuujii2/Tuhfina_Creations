@@ -12,20 +12,27 @@ export default function RegisterPage() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { signUp, user, isAdmin } = useAuth();
+    const { signUp, user, isAdmin, loading: authLoading } = useAuth();
     const router = useRouter();
 
     // Redirect when user is authenticated
     useEffect(() => {
-        if (user && !loading) {
+        if (user && !authLoading) {
             // Redirect based on role
             if (isAdmin) {
-                router.push('/admin');
+                router.replace('/admin');
             } else {
-                router.push('/dashboard');
+                router.replace('/shop');
             }
         }
-    }, [user, isAdmin, loading, router]);
+    }, [user, isAdmin, authLoading, router]);
+
+    // Prevent flicker
+    if (authLoading || (user && !authLoading)) {
+        return <div className="min-h-screen bg-luxury-cream flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-luxury-gold"></div>
+        </div>;
+    }
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, useCallback, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-// import Image from 'next/image'; // Removed for Cloudinary migration
+import Image from 'next/image';
 import Script from 'next/script';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,15 +44,7 @@ export default function CheckoutPage() {
     const [pincode, setPincode] = useState('');
     const [phone, setPhone] = useState('');
 
-    useEffect(() => {
-        if (!user) {
-            router.push('/login');
-            return;
-        }
-        loadCartDetails();
-    }, [cart, user]);
-
-    const loadCartDetails = async () => {
+    const loadCartDetails = useCallback(async () => {
         setLoading(true);
         const itemsWithDetails: CartItemWithDetails[] = [];
 
@@ -68,7 +60,17 @@ export default function CheckoutPage() {
 
         setCartItems(itemsWithDetails);
         setLoading(false);
-    };
+    }, [cart]);
+
+    useEffect(() => {
+        if (user === null && !loading) {
+            router.push('/login');
+            return;
+        }
+        if (user) {
+            loadCartDetails();
+        }
+    }, [user, loadCartDetails, router]);
 
     const total = cartItems.reduce(
         (sum, item) => sum + item.product.price * item.quantity,
@@ -345,13 +347,11 @@ export default function CheckoutPage() {
                                     <div key={item.productId} className="flex gap-4">
                                         <div className="relative h-16 w-16 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
                                             {item.product.images && item.product.images.length > 0 ? (
-                                                <img
+                                                <Image
                                                     src={item.product.images[0]}
                                                     alt={item.product.title}
-                                                    className="w-full h-full object-cover"
-                                                    onError={(e) => {
-                                                        (e.target as HTMLImageElement).src = '/placeholder.png';
-                                                    }}
+                                                    fill
+                                                    className="object-cover"
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-2xl">

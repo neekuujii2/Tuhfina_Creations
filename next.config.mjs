@@ -4,6 +4,7 @@ const nextConfig = {
     domains: [
       'firebasestorage.googleapis.com',
       'images.unsplash.com',
+      'res.cloudinary.com',
       'sl.bing.net',
       'drive.google.com',
       'lh3.googleusercontent.com',
@@ -19,6 +20,10 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        protocol: 'https',
         hostname: 'sl.bing.net',
       },
       {
@@ -30,6 +35,15 @@ const nextConfig = {
         hostname: 'lh3.googleusercontent.com',
       },
     ],
+  },
+  async redirects() {
+    return [
+      {
+        source: '/signup',
+        destination: '/register',
+        permanent: true,
+      },
+    ];
   },
 };
 

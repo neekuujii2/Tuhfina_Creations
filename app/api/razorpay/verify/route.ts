@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { RAZORPAY_KEY_SECRET } from '@/lib/razorpayConfig';
-import { db } from '@/lib/firebase';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import dbConnect from '@/lib/mongodb';
+import Order from '@/models/Order';
 import cloudinary from '@/lib/cloudinary';
 import PDFDocument from 'pdfkit';
 
@@ -28,9 +28,9 @@ async function generateInvoicePDF(order: any): Promise<Buffer> {
         doc.moveDown(0.5);
 
         const invoiceDate = new Date().toLocaleDateString();
-        doc.fontSize(10).text(`Invoice Number: INV-${order.id.substring(0, 8).toUpperCase()}`);
+        doc.fontSize(10).text(`Invoice Number: INV-${order._id.toString().substring(0, 8).toUpperCase()}`);
         doc.text(`Date: ${invoiceDate}`);
-        doc.text(`Order ID: ${order.id}`);
+        doc.text(`Order ID: ${order._id}`);
         doc.moveDown();
 
         // --- Bill To ---
@@ -61,7 +61,7 @@ async function generateInvoicePDF(order: any): Promise<Buffer> {
             doc.text(item.title, itemX, y, { width: 280 });
             doc.text(item.quantity.toString(), qtyX, y);
             doc.text(`INR ${item.price}`, priceX, y);
-            y += 20; // Adjust for dynamic height if needed
+            y += 20;
         });
 
         doc.moveTo(50, y + 10).lineTo(550, y + 10).stroke();
@@ -69,7 +69,7 @@ async function generateInvoicePDF(order: any): Promise<Buffer> {
         // --- Total ---
         y += 20;
         doc.fontSize(12).font('Helvetica-Bold');
-        doc.text(`Total Amount: INR ${order.totalAmount}`, 350, y, { align: 'right', width: 200 }); // Align right essentially
+        doc.text(`Total Amount: INR ${order.totalAmount}`, 350, y, { align: 'right', width: 200 });
 
         doc.end();
     });
@@ -109,39 +109,37 @@ export async function POST(request: Request) {
             .digest("hex");
 
         if (expectedSignature === razorpay_signature) {
-            // 2. Fetch Order Data
-            const orderRef = doc(db, 'orders', orderId);
-            const orderSnap = await getDoc(orderRef);
+            // 2. Connect to DB and Fetch Order Data
+            await dbConnect();
+            const order = await Order.findById(orderId);
 
-            if (!orderSnap.exists()) {
+            if (!order) {
                 return NextResponse.json({ error: 'Order not found' }, { status: 404 });
             }
 
-            const orderData = orderSnap.data();
-
             // 3. Generate PDF
-            const pdfBuffer = await generateInvoicePDF({ id: orderId, ...orderData });
+            const pdfBuffer = await generateInvoicePDF(order);
 
             // 4. Upload to Cloudinary
             const downloadURL = await uploadToCloudinary(pdfBuffer, orderId);
 
-            // 5. Update Order in Firestore
-            await updateDoc(orderRef, {
-                paymentStatus: 'PAID',
-                razorpayOrderId: razorpay_order_id,
-                razorpayPaymentId: razorpay_payment_id,
-                razorpaySignature: razorpay_signature,
-                invoiceUrl: downloadURL,
-                status: 'processing', // Auto-move to processing
-                paidAt: new Date()
-            });
+            // 5. Update Order in MongoDB
+            order.paymentStatus = 'PAID';
+            order.razorpayOrderId = razorpay_order_id;
+            order.razorpayPaymentId = razorpay_payment_id;
+            order.razorpaySignature = razorpay_signature;
+            order.invoiceUrl = downloadURL;
+            order.status = 'processing';
+            order.paidAt = new Date();
+
+            await order.save();
 
             return NextResponse.json({ success: true, invoiceUrl: downloadURL });
         } else {
             return NextResponse.json({ error: 'Invalid Signature' }, { status: 400 });
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Payment verification failed:', error);
-        return NextResponse.json({ error: 'Payment verification failed' }, { status: 500 });
+        return NextResponse.json({ error: error.message || 'Payment verification failed' }, { status: 500 });
     }
 }
