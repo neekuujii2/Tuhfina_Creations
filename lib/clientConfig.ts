@@ -1,1 +1,1 @@
-export const NEXT_PUBLIC_RAZORPAY_KEY_ID = "rzp_test_RwdWYATtCm2NOq";
+export const NEXT_PUBLIC_RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
