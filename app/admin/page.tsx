@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { productService } from '@/lib/services/productService';
 import { orderService } from '@/lib/services/orderService';
 import { Product, Order, CATEGORIES } from '@/lib/types';
-import Image from 'next/image';
+// import Image from 'next/image'; // Removed as per requirement
 import {
     Plus,
     Package,
@@ -46,6 +46,9 @@ export default function AdminDashboard() {
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
     const [submitting, setSubmitting] = useState(false);
+    const [uploadingImages, setUploadingImages] = useState(false);
+    const [csvProcessing, setCsvProcessing] = useState(false);
+    const [csvProgress, setCsvProgress] = useState({ current: 0, total: 0 });
 
     useEffect(() => {
         if (authLoading) return;
@@ -79,13 +82,114 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        setImageFiles(files);
+        if (files.length === 0) return;
 
-        // Create previews
-        const previews = files.map((file) => URL.createObjectURL(file));
-        setImagePreviews(previews);
+        setUploadingImages(true);
+        try {
+            const formData = new FormData();
+            files.forEach((file) => formData.append('file', file));
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) throw new Error('Failed to upload images');
+
+            const data = await response.json();
+            setImagePreviews(data.urls);
+            setImageFiles(files); // Keep file refs if needed for UI, but URLs are used for submit
+        } catch (error) {
+            console.error('Error uploading images:', error);
+            alert('Failed to upload images. Please try again.');
+        } finally {
+            setUploadingImages(false);
+        }
+    };
+
+    const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setCsvProcessing(true);
+        const reader = new FileReader();
+
+        reader.onload = async (event) => {
+            try {
+                const text = event.target?.result as string;
+                const rows = text.split(/\r?\n/).filter(row => row.trim());
+                if (rows.length < 2) return;
+
+                const parseCSVLine = (line: string) => {
+                    const result = [];
+                    let cell = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        if (char === '"') inQuotes = !inQuotes;
+                        else if (char === ',' && !inQuotes) {
+                            result.push(cell.trim());
+                            cell = '';
+                        } else cell += char;
+                    }
+                    result.push(cell.trim());
+                    return result;
+                };
+
+                const headers = parseCSVLine(rows[0]).map(h => h.toLowerCase());
+                const dataRows = rows.slice(1);
+
+                setCsvProgress({ current: 0, total: dataRows.length });
+
+                for (let i = 0; i < dataRows.length; i++) {
+                    const row = parseCSVLine(dataRows[i]);
+                    if (row.length < headers.length) continue;
+
+                    const productData: any = {};
+                    let imageSource: string = '';
+
+                    headers.forEach((header, index) => {
+                        if (header === 'title') productData.title = row[index];
+                        else if (header === 'description') productData.description = row[index];
+                        else if (header === 'price') productData.price = Number(row[index]);
+                        else if (header === 'category') productData.category = row[index];
+                        else if (header === 'iscustomizable') productData.isCustomizable = row[index].toUpperCase() === 'TRUE';
+                        else if (header === 'images' || header === 'image') imageSource = row[index];
+                    });
+
+                    if (productData.title && imageSource) {
+                        try {
+                            await productService.createProduct(
+                                {
+                                    title: productData.title,
+                                    description: productData.description || '',
+                                    price: productData.price || 0,
+                                    category: productData.category || CATEGORIES[0],
+                                    isCustomizable: productData.isCustomizable || false,
+                                },
+                                [imageSource]
+                            );
+                        } catch (err) {
+                            console.error(`Failed to import row ${i + 1}:`, err);
+                        }
+                    }
+                    setCsvProgress(prev => ({ ...prev, current: i + 1 }));
+                }
+
+                alert('CSV Import Completed');
+                loadData();
+            } catch (error) {
+                console.error('CSV Parsing Error:', error);
+                alert('Failed to parse CSV');
+            } finally {
+                setCsvProcessing(false);
+                if (e.target) e.target.value = '';
+            }
+        };
+
+        reader.readAsText(file);
     };
 
     const handleProductSubmit = async (e: React.FormEvent) => {
@@ -101,11 +205,11 @@ export default function AdminDashboard() {
                         ...formData,
                         price: Number(formData.price),
                     },
-                    imageFiles.length > 0 ? imageFiles : undefined
+                    imagePreviews.length > 0 ? imagePreviews : undefined
                 );
             } else {
                 // Create new product
-                if (imageFiles.length === 0) {
+                if (imagePreviews.length === 0) {
                     alert('Please upload at least one image');
                     setSubmitting(false);
                     return;
@@ -116,7 +220,7 @@ export default function AdminDashboard() {
                         ...formData,
                         price: Number(formData.price),
                     },
-                    imageFiles
+                    imagePreviews
                 );
             }
 
@@ -257,25 +361,38 @@ export default function AdminDashboard() {
                     <div>
                         <div className="flex justify-between items-center mb-8">
                             <h2 className="text-2xl font-serif font-bold">Products</h2>
-                            <button
-                                onClick={() => {
-                                    setEditingProduct(null);
-                                    setFormData({
-                                        title: '',
-                                        description: '',
-                                        price: '',
-                                        category: CATEGORIES[0],
-                                        isCustomizable: false,
-                                    });
-                                    setImagePreviews([]);
-                                    setImageFiles([]);
-                                    setShowProductModal(true);
-                                }}
-                                className="btn-luxury flex items-center space-x-2"
-                            >
-                                <Plus size={20} />
-                                <span>Add Product</span>
-                            </button>
+                            <div className="flex items-center space-x-4">
+                                <label className={`btn-outline-luxury flex items-center space-x-2 cursor-pointer ${csvProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    <Upload size={20} />
+                                    <span>{csvProcessing ? `Importing (${csvProgress.current}/${csvProgress.total})` : 'Bulk Import CSV'}</span>
+                                    <input
+                                        type="file"
+                                        accept=".csv"
+                                        className="hidden"
+                                        onChange={handleCsvUpload}
+                                        disabled={csvProcessing}
+                                    />
+                                </label>
+                                <button
+                                    onClick={() => {
+                                        setEditingProduct(null);
+                                        setFormData({
+                                            title: '',
+                                            description: '',
+                                            price: '',
+                                            category: CATEGORIES[0],
+                                            isCustomizable: false,
+                                        });
+                                        setImagePreviews([]);
+                                        setImageFiles([]);
+                                        setShowProductModal(true);
+                                    }}
+                                    className="btn-luxury flex items-center space-x-2"
+                                >
+                                    <Plus size={20} />
+                                    <span>Add Product</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -286,11 +403,13 @@ export default function AdminDashboard() {
                                 >
                                     <div className="relative h-48 bg-gray-100">
                                         {product.images && product.images.length > 0 ? (
-                                            <Image
+                                            <img
                                                 src={product.images[0]}
                                                 alt={product.title}
-                                                fill
-                                                className="object-cover"
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = '/placeholder.png';
+                                                }}
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-6xl">
@@ -544,10 +663,19 @@ export default function AdminDashboard() {
                                     </label>
                                     <label className="block cursor-pointer">
                                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-luxury-gold transition-colors">
-                                            <Upload className="mx-auto mb-2 text-luxury-gray" size={32} />
-                                            <p className="text-sm text-luxury-gray">
-                                                Click to upload images or drag and drop
-                                            </p>
+                                            {uploadingImages ? (
+                                                <div className="flex flex-col items-center">
+                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-luxury-gold mb-2"></div>
+                                                    <p className="text-sm text-luxury-gray">Uploading images...</p>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Upload className="mx-auto mb-2 text-luxury-gray" size={32} />
+                                                    <p className="text-sm text-luxury-gray">
+                                                        Click to upload images or drag and drop
+                                                    </p>
+                                                </>
+                                            )}
                                         </div>
                                         <input
                                             type="file"
@@ -555,6 +683,7 @@ export default function AdminDashboard() {
                                             accept="image/*"
                                             onChange={handleImageChange}
                                             className="hidden"
+                                            disabled={uploadingImages}
                                         />
                                     </label>
 
@@ -562,7 +691,14 @@ export default function AdminDashboard() {
                                         <div className="grid grid-cols-4 gap-4 mt-4">
                                             {imagePreviews.map((preview, index) => (
                                                 <div key={index} className="relative h-24 rounded overflow-hidden">
-                                                    <Image src={preview} alt={`Preview ${index + 1}`} fill className="object-cover" />
+                                                    <img
+                                                        src={preview}
+                                                        alt={`Preview ${index + 1}`}
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).src = '/placeholder.png';
+                                                        }}
+                                                    />
                                                 </div>
                                             ))}
                                         </div>

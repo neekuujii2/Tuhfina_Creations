@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { RAZORPAY_KEY_SECRET } from '@/lib/razorpayConfig';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import cloudinary from '@/lib/cloudinary';
 import PDFDocument from 'pdfkit';
 
 // Helper to generate PDF Buffer
@@ -75,6 +75,23 @@ async function generateInvoicePDF(order: any): Promise<Buffer> {
     });
 }
 
+const uploadToCloudinary = (buffer: Buffer, orderId: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            {
+                folder: 'invoices',
+                public_id: `invoice_${orderId}`,
+                resource_type: 'auto',
+            },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result!.secure_url);
+            }
+        );
+        uploadStream.end(buffer);
+    });
+};
+
 export async function POST(request: Request) {
     try {
         const {
@@ -105,15 +122,8 @@ export async function POST(request: Request) {
             // 3. Generate PDF
             const pdfBuffer = await generateInvoicePDF({ id: orderId, ...orderData });
 
-            // 4. Upload to Storage
-            // Note: Using client SDK server-side. Ensure rules allow write.
-            const storageRef = ref(storage, `invoices/${orderId}.pdf`);
-
-            // Convert Buffer to Uint8Array for clean uploadBytes compatibility
-            const uint8Array = new Uint8Array(pdfBuffer);
-
-            await uploadBytes(storageRef, uint8Array, { contentType: 'application/pdf' });
-            const downloadURL = await getDownloadURL(storageRef);
+            // 4. Upload to Cloudinary
+            const downloadURL = await uploadToCloudinary(pdfBuffer, orderId);
 
             // 5. Update Order in Firestore
             await updateDoc(orderRef, {

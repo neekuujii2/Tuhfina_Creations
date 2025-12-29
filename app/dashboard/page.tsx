@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
+// import Image from 'next/image'; // Removed for Cloudinary migration
 import { useAuth } from '@/contexts/AuthContext';
 import { orderService } from '@/lib/services/orderService';
 import { Order } from '@/lib/types';
@@ -190,11 +190,13 @@ function DashboardContent() {
                       <div key={index} className="flex gap-4">
                         <div className="relative h-20 w-20 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
                           {item.imageUrl ? (
-                            <Image
+                            <img
                               src={item.imageUrl}
                               alt={item.title}
-                              fill
-                              className="object-cover"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/placeholder.png';
+                              }}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-2xl">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
+// import Image from 'next/image'; // Removed for Cloudinary migration
 import { Product } from '@/lib/types';
 import { productService } from '@/lib/services/productService';
 import { useCart } from '@/contexts/CartContext';
@@ -130,11 +130,13 @@ export default function ProductPage() {
                     <div>
                         <div className="relative h-96 lg:h-[500px] bg-gray-100 rounded-lg overflow-hidden mb-4">
                             {product.images && product.images.length > 0 ? (
-                                <Image
+                                <img
                                     src={product.images[selectedImage]}
                                     alt={product.title}
-                                    fill
-                                    className="object-cover"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).src = '/placeholder.png';
+                                    }}
                                 />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-9xl">
@@ -150,11 +152,18 @@ export default function ProductPage() {
                                         key={index}
                                         onClick={() => setSelectedImage(index)}
                                         className={`relative h-24 rounded-lg overflow-hidden border-2 transition-all ${selectedImage === index
-                                                ? 'border-luxury-gold'
-                                                : 'border-gray-200 hover:border-luxury-gold'
+                                            ? 'border-luxury-gold'
+                                            : 'border-gray-200 hover:border-luxury-gold'
                                             }`}
                                     >
-                                        <Image src={image} alt={`${product.title} ${index + 1}`} fill className="object-cover" />
+                                        <img
+                                            src={image}
+                                            alt={`${product.title} ${index + 1}`}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).src = '/placeholder.png';
+                                            }}
+                                        />
                                     </button>
                                 ))}
                             </div>
@@ -186,6 +195,21 @@ export default function ProductPage() {
                             <p className="text-sm text-luxury-gray mb-2">Category</p>
                             <p className="text-luxury-black font-medium">{product.category}</p>
                         </div>
+
+                        {/* Features */}
+                        {product.features && product.features.length > 0 && (
+                            <div className="mb-8">
+                                <h3 className="text-lg font-serif font-semibold mb-3 text-luxury-black">Key Features</h3>
+                                <ul className="space-y-2">
+                                    {product.features.map((feature, index) => (
+                                        <li key={index} className="flex items-start text-luxury-gray">
+                                            <span className="mr-2 text-luxury-gold">•</span>
+                                            {feature}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
 
                         {/* Customization Options */}
                         {product.isCustomizable && (
@@ -228,11 +252,13 @@ export default function ProductPage() {
                                         </div>
                                         {customImagePreview && (
                                             <div className="mt-3 relative h-32 rounded-lg overflow-hidden">
-                                                <Image
+                                                <img
                                                     src={customImagePreview}
                                                     alt="Preview"
-                                                    fill
-                                                    className="object-cover"
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).src = '/placeholder.png';
+                                                    }}
                                                 />
                                             </div>
                                         )}

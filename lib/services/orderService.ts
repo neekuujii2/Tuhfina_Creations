@@ -1,71 +1,54 @@
-import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    addDoc,
-    updateDoc,
-    query,
-    where,
-    orderBy,
-    Timestamp,
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Order } from '@/lib/types';
 
 export const orderService = {
     // Create order
     async createOrder(orderData: Omit<Order, 'id' | 'createdAt'>): Promise<string> {
-        const docRef = await addDoc(collection(db, 'orders'), {
-            ...orderData,
-            createdAt: Timestamp.now(),
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData),
         });
-        return docRef.id;
+
+        if (!response.ok) {
+            throw new Error('Failed to create order');
+        }
+
+        const newOrder = await response.json();
+        return newOrder._id;
     },
 
     // Get user orders
     async getUserOrders(userId: string): Promise<Order[]> {
-        const ordersRef = collection(db, 'orders');
-        const q = query(
-            ordersRef,
-            where('userId', '==', userId),
-            orderBy('createdAt', 'desc')
-        );
-        const snapshot = await getDocs(q);
-
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate() || new Date(),
-        })) as Order[];
+        const allOrders = await this.getAllOrders();
+        return allOrders.filter(order => order.userId === userId);
     },
 
     // Get all orders (Admin only)
     async getAllOrders(): Promise<Order[]> {
-        const ordersRef = collection(db, 'orders');
-        const q = query(ordersRef, orderBy('createdAt', 'desc'));
-        const snapshot = await getDocs(q);
+        const res = await fetch('/api/orders');
+        if (!res.ok) throw new Error('Failed to fetch orders');
+        const orders = await res.json();
 
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate() || new Date(),
-        })) as Order[];
+        return orders.map((o: any) => ({
+            ...o,
+            id: o._id, // Map MongoDB _id to interface id
+            createdAt: new Date(o.createdAt)
+        }));
     },
 
     // Get single order
     async getOrder(id: string): Promise<Order | null> {
-        const docRef = doc(db, 'orders', id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            return {
-                id: docSnap.id,
-                ...docSnap.data(),
-                createdAt: docSnap.data().createdAt?.toDate() || new Date(),
-            } as Order;
+        const res = await fetch(`/api/orders/${id}`);
+        if (!res.ok) {
+            if (res.status === 404) return null;
+            throw new Error('Failed to fetch order');
         }
-        return null;
+        const o = await res.json();
+        return {
+            ...o,
+            id: o._id,
+            createdAt: new Date(o.createdAt)
+        };
     },
 
     // Update order status (Admin only)
@@ -73,7 +56,30 @@ export const orderService = {
         id: string,
         status: Order['status']
     ): Promise<void> {
-        const docRef = doc(db, 'orders', id);
-        await updateDoc(docRef, { status });
+        const response = await fetch(`/api/orders/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update order status');
+        }
+    },
+
+    // Update payment status (Admin or Webhook)
+    async updatePaymentStatus(
+        id: string,
+        paymentStatus: Order['paymentStatus']
+    ): Promise<void> {
+        const response = await fetch(`/api/orders/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentStatus }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update payment status');
+        }
     },
 };
