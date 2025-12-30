@@ -87,7 +87,7 @@ export default async function AboutPage() {
                         </div>
                         <div className="relative h-[500px] rounded-2xl overflow-hidden shadow-2xl animate-scale-in">
                             <Image
-                                src="https://images.unsplash.com/photo-1513519247388-193ad51c50bb?q=80&w=2070&auto=format&fit=crop"
+                                src="https://unsplash.com/photos/young-female-florist-working-with-flowers-making-bouquet-y2XrVa7l9b8"
                                 alt="Crafting Process"
                                 fill
                                 className="object-cover"
