@@ -12,6 +12,14 @@ export interface User {
     createdAt: Date;
 }
 
+export interface FestivalOffer {
+    price: number;
+    startAt: Date;
+    endAt: Date;
+    label?: string;
+    isFlash?: boolean;
+}
+
 export interface Product {
     id: string;
     title: string;
@@ -21,7 +29,29 @@ export interface Product {
     images: string[];
     isCustomizable: boolean;
     features?: string[];
+    festivalOffer?: FestivalOffer;
     createdAt: Date;
+}
+
+export interface CategoryOffer {
+    _id?: string;
+    category: string;
+    discountPercent?: number;
+    fixedPrice?: number;
+    startAt: Date;
+    endAt: Date;
+    label?: string;
+    isFlash?: boolean;
+}
+
+export interface FestivalConfig {
+    _id?: string;
+    active: boolean;
+    bannerText: string;
+    bannerSubtext?: string;
+    bannerImage?: string;
+    startAt: Date;
+    endAt: Date;
 }
 
 export interface CartItem {
@@ -48,12 +78,13 @@ export interface Order {
         };
     }[];
     totalAmount: number;
-    status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+    status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'CONFIRMED';
     paymentStatus?: 'PENDING' | 'PAID' | 'FAILED';
     razorpayOrderId?: string;
     razorpayPaymentId?: string;
     razorpaySignature?: string;
     invoiceUrl?: string;
+    paidAt?: Date;
     createdAt: Date;
     userEmail?: string;
     shippingAddress?: {

@@ -4,38 +4,45 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Product, CATEGORIES } from '@/lib/types';
+import { Product, CATEGORIES, CategoryOffer, FestivalConfig } from '@/lib/types';
 import { productService } from '@/lib/services/productService';
-import { ShoppingCart, Heart } from 'lucide-react';
+import { ShoppingCart, Heart, Sparkles, Clock } from 'lucide-react';
+import { resolveProductPrice } from '@/lib/saleUtils';
+import CountdownTimer from '@/components/CountdownTimer';
 
 function ShopContent() {
     const searchParams = useSearchParams();
     const categoryParam = searchParams.get('category');
 
     const [products, setProducts] = useState<Product[]>([]);
+    const [categoryOffers, setCategoryOffers] = useState<CategoryOffer[]>([]);
+    const [festivalConfig, setFestivalConfig] = useState<FestivalConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam || 'all');
 
-    const loadProducts = useCallback(async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            let fetchedProducts;
-            if (selectedCategory === 'all') {
-                fetchedProducts = await productService.getAllProducts();
-            } else {
-                fetchedProducts = await productService.getProductsByCategory(selectedCategory);
-            }
+            const [fetchedProducts, categoryOffersData, festivalConfigData] = await Promise.all([
+                selectedCategory === 'all'
+                    ? productService.getAllProducts()
+                    : productService.getProductsByCategory(selectedCategory),
+                fetch('/api/category-offers').then(res => res.json()),
+                fetch('/api/festival-config').then(res => res.json()),
+            ]);
             setProducts(fetchedProducts);
+            setCategoryOffers(categoryOffersData);
+            setFestivalConfig(festivalConfigData);
         } catch (error) {
-            console.error('Error loading products:', error);
+            console.error('Error loading data:', error);
         } finally {
             setLoading(false);
         }
     }, [selectedCategory]);
 
     useEffect(() => {
-        loadProducts();
-    }, [loadProducts]);
+        loadData();
+    }, [loadData]);
 
     return (
         <div className="bg-white">
@@ -92,59 +99,93 @@ function ShopContent() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                        {products.map((product) => (
-                            <Link
-                                key={product.id}
-                                href={`/product/${product.id}`}
-                                className="group bg-white rounded-lg overflow-hidden card-hover border border-gray-200"
-                            >
-                                <div className="relative h-64 bg-gray-100 overflow-hidden">
-                                    {product.images && product.images.length > 0 ? (
-                                        <Image
-                                            src={product.images[0]}
-                                            alt={product.title}
-                                            fill
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-6xl">
-                                            🎁
-                                        </div>
-                                    )}
-                                    {product.isCustomizable && (
-                                        <div className="absolute top-3 right-3 bg-luxury-gold text-white text-xs px-3 py-1 rounded-full font-semibold">
-                                            Customizable
-                                        </div>
-                                    )}
-                                </div>
+                        {products.map((product) => {
+                            const status = resolveProductPrice(product, categoryOffers, festivalConfig);
+                            return (
+                                <Link
+                                    key={product.id}
+                                    href={`/product/${product.id}`}
+                                    className="group bg-white rounded-lg overflow-hidden card-hover border border-gray-200"
+                                >
+                                    <div className="relative h-64 bg-gray-100 overflow-hidden">
+                                        {product.images && product.images.length > 0 ? (
+                                            <Image
+                                                src={product.images[0]}
+                                                alt={product.title}
+                                                fill
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-6xl">
+                                                🎁
+                                            </div>
+                                        )}
 
-                                <div className="p-5">
-                                    <h3 className="font-serif font-semibold text-lg text-luxury-black mb-2 group-hover:text-luxury-gold transition-colors line-clamp-2">
-                                        {product.title}
-                                    </h3>
-                                    <p className="text-sm text-luxury-gray mb-3 line-clamp-2">
-                                        {product.description}
-                                    </p>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-2xl font-bold text-luxury-gold">
-                                            ₹{product.price}
-                                        </span>
-                                        <div className="flex items-center space-x-2">
-                                            <button
-                                                className="p-2 rounded-full bg-luxury-cream hover:bg-luxury-gold hover:text-white transition-colors"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    // Add to wishlist functionality
-                                                }}
-                                            >
-                                                <Heart size={18} />
-                                            </button>
+                                        {/* Sale Badges */}
+                                        <div className="absolute top-3 left-3 flex flex-col gap-2">
+                                            {status.isSaleActive && (
+                                                <div className={`text-white text-[10px] px-3 py-1 rounded-full font-bold flex items-center shadow-lg ${status.isFlash ? 'bg-red-600' : 'bg-luxury-gold'}`}>
+                                                    {status.isFlash && <Clock size={12} className="mr-1" />}
+                                                    {status.label}
+                                                </div>
+                                            )}
+                                            {product.isCustomizable && (
+                                                <div className="bg-luxury-black/70 text-white text-[10px] px-3 py-1 rounded-full font-semibold backdrop-blur-sm">
+                                                    Customizable
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Flash Sale Timer */}
+                                        {status.isFlash && (
+                                            <div className="absolute bottom-3 left-3 right-3">
+                                                <CountdownTimer
+                                                    expiryDate={product.festivalOffer?.isFlash ? new Date(product.festivalOffer.endAt) : new Date(categoryOffers.find(o => o.category === product.category)?.endAt || 0)}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="p-5">
+                                        <h3 className="font-serif font-semibold text-lg text-luxury-black mb-2 group-hover:text-luxury-gold transition-colors line-clamp-2">
+                                            {product.title}
+                                        </h3>
+                                        <p className="text-sm text-luxury-gray mb-3 line-clamp-2">
+                                            {product.description}
+                                        </p>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                {status.isSaleActive ? (
+                                                    <>
+                                                        <span className="text-sm text-luxury-gray line-through">
+                                                            ₹{product.price}
+                                                        </span>
+                                                        <span className="text-2xl font-bold text-luxury-gold">
+                                                            ₹{status.currentPrice}
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-2xl font-bold text-luxury-gold">
+                                                        ₹{product.price}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    className="p-2 rounded-full bg-luxury-cream hover:bg-luxury-gold hover:text-white transition-colors"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                    }}
+                                                >
+                                                    <Heart size={18} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </Link>
-                        ))}
+                                </Link>
+                            );
+                        })}
                     </div>
                 )}
             </div>

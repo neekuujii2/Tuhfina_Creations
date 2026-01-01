@@ -4,18 +4,55 @@ import Image from 'next/image';
 import dbConnect from '@/lib/mongodb';
 import CategoryModel from '@/models/Category';
 import { CATEGORIES, Category } from '@/lib/types';
+import SettingsModel from '@/models/Settings';
+import FestivalConfigModel from '@/models/FestivalConfig';
+import SaleBanner from '@/components/SaleBanner';
+import { FestivalConfig } from '@/lib/types';
 
 export default async function HomePage() {
     let categories: Category[] = [];
+    let settings: any = {};
+    let festivalConfig: FestivalConfig | null = null;
     try {
         await dbConnect();
-        categories = await CategoryModel.find({}).lean();
+        const [categoriesData, settingsData, festivalConfigData] = await Promise.all([
+            CategoryModel.find({}).lean(),
+            SettingsModel.find({}).lean(),
+            FestivalConfigModel.findOne({}).lean(),
+        ]);
+        categories = categoriesData as any;
+        settings = settingsData.reduce((acc: any, curr: any) => {
+            acc[curr.key] = curr.value;
+            return acc;
+        }, {});
+        festivalConfig = festivalConfigData as any;
     } catch (error) {
-        console.error('Error fetching categories:', error);
+        console.error('Error fetching home data:', error);
     }
 
     return (
         <div className="bg-white">
+            {/* Festival Sale Banner */}
+            {festivalConfig && <SaleBanner config={festivalConfig} />}
+
+            {/* Legacy Sale Banner Fallback */}
+            {!festivalConfig?.active && settings.isSaleActive && (
+                <div className="bg-luxury-gold text-white py-3 px-4 text-center sticky top-0 z-50 animate-pulse-soft overflow-hidden">
+                    <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <span className="font-medium tracking-wide flex items-center">
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            {settings.saleMessage || 'Festival Special Sale is LIVE! ✨'}
+                        </span>
+                        <Link
+                            href="/shop"
+                            className="bg-white text-luxury-gold px-6 py-1 rounded-full text-sm font-bold hover:bg-opacity-90 transition-all transform hover:scale-105"
+                        >
+                            {settings.saleButtonText || 'Shop Now'}
+                        </Link>
+                    </div>
+                </div>
+            )}
+
             {/* Hero Section */}
             <section className="section-padding bg-luxury-cream">
                 <div className="max-w-7xl mx-auto">

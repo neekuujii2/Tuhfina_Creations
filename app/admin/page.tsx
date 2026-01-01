@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { productService } from '@/lib/services/productService';
 import { orderService } from '@/lib/services/orderService';
-import { Product, Order, CATEGORIES } from '@/lib/types';
+import { Product, Order, CATEGORIES, FestivalOffer, CategoryOffer, FestivalConfig } from '@/lib/types';
 import Image from 'next/image';
 import {
     Plus,
@@ -16,16 +16,23 @@ import {
     X,
     Upload,
     AlertCircle,
+    Sparkles,
+    Calendar,
+    Tag,
+    Clock,
 } from 'lucide-react';
 
 export default function AdminDashboard() {
     const { user, isAdmin, loading: authLoading } = useAuth();
     const router = useRouter();
 
-    const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'categories'>('products');
+    const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'categories' | 'settings'>('products');
     const [products, setProducts] = useState<Product[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
     const [dbCategories, setDbCategories] = useState<any[]>([]);
+    const [categoryOffers, setCategoryOffers] = useState<CategoryOffer[]>([]);
+    const [festivalConfig, setFestivalConfig] = useState<FestivalConfig | null>(null);
+    const [settings, setSettings] = useState<any>({});
     const [pageLoading, setPageLoading] = useState(true);
 
     // Product Form State
@@ -37,12 +44,38 @@ export default function AdminDashboard() {
         price: string;
         category: typeof CATEGORIES[number];
         isCustomizable: boolean;
+        festivalOffer?: {
+            price: number;
+            startAt: Date;
+            endAt: Date;
+            label: string;
+            isFlash: boolean;
+        };
     }>({
         title: '',
         description: '',
         price: '',
         category: CATEGORIES[0],
         isCustomizable: false,
+    });
+
+    const [festivalForm, setFestivalForm] = useState<Omit<FestivalConfig, '_id'>>({
+        active: false,
+        bannerText: 'Festival Sale is LIVE! ✨',
+        bannerSubtext: '',
+        bannerImage: '',
+        startAt: new Date(),
+        endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+
+    const [categoryOfferForm, setCategoryOfferForm] = useState<Omit<CategoryOffer, '_id'>>({
+        category: CATEGORIES[0],
+        discountPercent: 0,
+        fixedPrice: 0,
+        startAt: new Date(),
+        endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        label: '',
+        isFlash: false,
     });
     const [imageFiles, setImageFiles] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -54,14 +87,31 @@ export default function AdminDashboard() {
     const loadData = useCallback(async () => {
         setPageLoading(true);
         try {
-            const [productsData, ordersData, categoriesData] = await Promise.all([
+            const [productsData, ordersData, categoriesData, settingsData, categoryOffersData, festivalConfigData] = await Promise.all([
                 productService.getAllProducts(),
                 orderService.getAllOrders(),
                 fetch('/api/categories').then(res => res.json()),
+                fetch('/api/settings').then(res => res.json()),
+                fetch('/api/category-offers').then(res => res.json()),
+                fetch('/api/festival-config').then(res => res.json()),
             ]);
             setProducts(productsData);
             setOrders(ordersData);
             setDbCategories(categoriesData);
+            setSettings(settingsData);
+            setCategoryOffers(categoryOffersData);
+            setFestivalConfig(festivalConfigData);
+
+            if (festivalConfigData) {
+                setFestivalForm({
+                    active: festivalConfigData.active,
+                    bannerText: festivalConfigData.bannerText,
+                    bannerSubtext: festivalConfigData.bannerSubtext || '',
+                    bannerImage: festivalConfigData.bannerImage || '',
+                    startAt: new Date(festivalConfigData.startAt),
+                    endAt: new Date(festivalConfigData.endAt),
+                });
+            }
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -236,6 +286,7 @@ export default function AdminDashboard() {
                 price: '',
                 category: CATEGORIES[0],
                 isCustomizable: false,
+                festivalOffer: undefined
             });
             setImageFiles([]);
             setImagePreviews([]);
@@ -256,6 +307,13 @@ export default function AdminDashboard() {
             price: product.price.toString(),
             category: product.category as typeof CATEGORIES[number],
             isCustomizable: product.isCustomizable,
+            festivalOffer: product.festivalOffer ? {
+                price: product.festivalOffer.price,
+                startAt: new Date(product.festivalOffer.startAt),
+                endAt: new Date(product.festivalOffer.endAt),
+                label: product.festivalOffer.label || '',
+                isFlash: product.festivalOffer.isFlash || false,
+            } : undefined
         });
         setImagePreviews(product.images);
         setShowProductModal(true);
@@ -404,6 +462,15 @@ export default function AdminDashboard() {
                     >
                         Categories
                     </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`pb-4 px-6 font-semibold transition-colors ${activeTab === 'settings'
+                            ? 'text-luxury-gold border-b-2 border-luxury-gold'
+                            : 'text-luxury-gray hover:text-luxury-gold'
+                            }`}
+                    >
+                        Settings & Offers
+                    </button>
                 </div>
 
                 {/* Products Tab */}
@@ -545,6 +612,7 @@ export default function AdminDashboard() {
                                                     className="input-luxury text-sm"
                                                 >
                                                     <option value="pending">Pending</option>
+                                                    <option value="CONFIRMED">Confirmed</option>
                                                     <option value="processing">Processing</option>
                                                     <option value="shipped">Shipped</option>
                                                     <option value="delivered">Delivered</option>
@@ -657,6 +725,235 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 )}
+
+                {/* Settings & Festival Engine Tab */}
+                {activeTab === 'settings' && (
+                    <div className="max-w-6xl space-y-12">
+                        {/* 1. Global Festival Control */}
+                        <section className="bg-white border border-luxury-gold/20 rounded-xl overflow-hidden shadow-sm">
+                            <div className="bg-luxury-gold/5 p-6 border-b border-luxury-gold/10">
+                                <h3 className="text-xl font-serif font-bold text-luxury-black flex items-center">
+                                    <Sparkles className="text-luxury-gold mr-3" size={24} />
+                                    Master Festival Control
+                                </h3>
+                            </div>
+                            <div className="p-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-between p-4 bg-luxury-cream rounded-lg">
+                                            <div>
+                                                <p className="font-bold text-luxury-black">Global Sale Status</p>
+                                                <p className="text-sm text-luxury-gray">Master switch for all festival UI</p>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    const newValue = !festivalForm.active;
+                                                    const res = await fetch('/api/festival-config', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ active: newValue })
+                                                    });
+                                                    if (res.ok) loadData();
+                                                }}
+                                                className={`px-6 py-2 rounded-full font-bold transition-all ${festivalForm.active
+                                                    ? 'bg-red-500 text-white hover:bg-red-600'
+                                                    : 'bg-green-600 text-white hover:bg-green-700'
+                                                    }`}
+                                            >
+                                                {festivalForm.active ? 'Deactivate Sale' : 'Activate Sale'}
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2">Banner Title</label>
+                                                <input
+                                                    type="text"
+                                                    className="input-luxury"
+                                                    value={festivalForm.bannerText}
+                                                    onChange={e => setFestivalForm({ ...festivalForm, bannerText: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2">Banner Subtext</label>
+                                                <input
+                                                    type="text"
+                                                    className="input-luxury"
+                                                    value={festivalForm.bannerSubtext}
+                                                    onChange={e => setFestivalForm({ ...festivalForm, bannerSubtext: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2">Start Date & Time</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="input-luxury"
+                                                    value={new Date(festivalForm.startAt).toISOString().slice(0, 16)}
+                                                    onChange={e => setFestivalForm({ ...festivalForm, startAt: new Date(e.target.value) })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold mb-2">End Date & Time</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="input-luxury"
+                                                    value={new Date(festivalForm.endAt).toISOString().slice(0, 16)}
+                                                    onChange={e => setFestivalForm({ ...festivalForm, endAt: new Date(e.target.value) })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                const res = await fetch('/api/festival-config', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify(festivalForm)
+                                                });
+                                                if (res.ok) alert('Global Config Saved');
+                                            }}
+                                            className="w-full btn-luxury"
+                                        >
+                                            Update Global Config
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* 2. Category Offers */}
+                        <section className="space-y-6">
+                            <h3 className="text-2xl font-serif font-bold text-luxury-black flex items-center">
+                                <Tag className="text-luxury-gold mr-3" size={28} />
+                                Category-wide Offers
+                            </h3>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Form */}
+                                <div className="bg-luxury-cream p-8 rounded-xl space-y-6">
+                                    <h4 className="font-bold border-b border-luxury-gold/20 pb-2">Set New Category Offer</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="col-span-2">
+                                            <label className="block text-sm font-bold mb-2">Select Category</label>
+                                            <select
+                                                className="input-luxury"
+                                                value={categoryOfferForm.category}
+                                                onChange={e => setCategoryOfferForm({ ...categoryOfferForm, category: e.target.value })}
+                                            >
+                                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold mb-2">Discount %</label>
+                                            <input
+                                                type="number"
+                                                className="input-luxury"
+                                                value={categoryOfferForm.discountPercent}
+                                                onChange={e => setCategoryOfferForm({ ...categoryOfferForm, discountPercent: Number(e.target.value), fixedPrice: 0 })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold mb-2">OR Fixed Price (₹)</label>
+                                            <input
+                                                type="number"
+                                                className="input-luxury"
+                                                value={categoryOfferForm.fixedPrice}
+                                                onChange={e => setCategoryOfferForm({ ...categoryOfferForm, fixedPrice: Number(e.target.value), discountPercent: 0 })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold mb-2">Start At</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="input-luxury"
+                                                value={new Date(categoryOfferForm.startAt).toISOString().slice(0, 16)}
+                                                onChange={e => setCategoryOfferForm({ ...categoryOfferForm, startAt: new Date(e.target.value) })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold mb-2">End At</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="input-luxury"
+                                                value={new Date(categoryOfferForm.endAt).toISOString().slice(0, 16)}
+                                                onChange={e => setCategoryOfferForm({ ...categoryOfferForm, endAt: new Date(e.target.value) })}
+                                            />
+                                        </div>
+                                        <div className="col-span-2 flex items-center space-x-4">
+                                            <label className="flex items-center space-x-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={categoryOfferForm.isFlash}
+                                                    onChange={e => setCategoryOfferForm({ ...categoryOfferForm, isFlash: e.target.checked })}
+                                                    className="w-5 h-5 accent-luxury-gold"
+                                                />
+                                                <span className="font-bold flex items-center">
+                                                    <Clock size={16} className="mr-1" /> Is Flash Sale?
+                                                </span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="Offer Label (e.g. Diwali Sale)"
+                                                className="input-luxury flex-1"
+                                                value={categoryOfferForm.label || ''}
+                                                onChange={e => setCategoryOfferForm({ ...categoryOfferForm, label: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            const res = await fetch('/api/category-offers', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify(categoryOfferForm)
+                                            });
+                                            if (res.ok) {
+                                                alert('Category Offer Saved');
+                                                loadData();
+                                            }
+                                        }}
+                                        className="w-full btn-luxury"
+                                    >
+                                        Save Category Offer
+                                    </button>
+                                </div>
+
+                                {/* List */}
+                                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                                    {categoryOffers.map(offer => (
+                                        <div key={offer._id} className="bg-white border border-gray-200 p-4 rounded-lg flex justify-between items-center shadow-sm">
+                                            <div>
+                                                <p className="font-bold text-luxury-black">{offer.category}</p>
+                                                <p className="text-sm text-luxury-gold font-semibold">
+                                                    {offer.discountPercent ? `${offer.discountPercent}% OFF` : `Fixed ₹${offer.fixedPrice}`}
+                                                    {offer.isFlash && <span className="ml-2 uppercase text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded">Flash</span>}
+                                                </p>
+                                                <p className="text-[11px] text-luxury-gray">
+                                                    {new Date(offer.startAt).toLocaleString()} - {new Date(offer.endAt).toLocaleString()}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={async () => {
+                                                    if (confirm('Delete this offer?')) {
+                                                        await fetch(`/api/category-offers?id=${offer._id}`, { method: 'DELETE' });
+                                                        loadData();
+                                                    }
+                                                }}
+                                                className="text-red-400 hover:text-red-600 p-2"
+                                            >
+                                                <Trash2 size={20} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {categoryOffers.length === 0 && <p className="text-center text-luxury-gray py-10 italic">No category offers active.</p>}
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                )}
             </div>
 
             {/* Product Modal */}
@@ -729,6 +1026,105 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
 
+                                <div className="space-y-4 p-4 bg-luxury-cream rounded-lg">
+                                    <div className="flex items-center space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            id="festivalActive"
+                                            checked={!!formData.festivalOffer}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setFormData({
+                                                        ...formData,
+                                                        festivalOffer: {
+                                                            price: Number(formData.price) || 0,
+                                                            startAt: new Date(),
+                                                            endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                                                            label: '',
+                                                            isFlash: false
+                                                        }
+                                                    });
+                                                } else {
+                                                    setFormData({ ...formData, festivalOffer: undefined });
+                                                }
+                                            }}
+                                            className="w-5 h-5 accent-luxury-gold"
+                                        />
+                                        <label htmlFor="festivalActive" className="text-sm font-bold flex items-center">
+                                            <Sparkles size={16} className="mr-1 text-luxury-gold" /> Enable Festival Offer
+                                        </label>
+                                    </div>
+
+                                    {formData.festivalOffer && (
+                                        <div className="grid grid-cols-2 gap-4 pl-8 border-l-2 border-luxury-gold/20">
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">Offer Price (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    className="input-luxury text-sm"
+                                                    value={formData.festivalOffer.price}
+                                                    onChange={e => setFormData({
+                                                        ...formData,
+                                                        festivalOffer: { ...formData.festivalOffer!, price: Number(e.target.value) }
+                                                    })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">Label (e.g. Flash Deal)</label>
+                                                <input
+                                                    type="text"
+                                                    className="input-luxury text-sm"
+                                                    value={formData.festivalOffer.label}
+                                                    onChange={e => setFormData({
+                                                        ...formData,
+                                                        festivalOffer: { ...formData.festivalOffer!, label: e.target.value }
+                                                    })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">Start Time</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="input-luxury text-sm"
+                                                    value={new Date(formData.festivalOffer.startAt).toISOString().slice(0, 16)}
+                                                    onChange={e => setFormData({
+                                                        ...formData,
+                                                        festivalOffer: { ...formData.festivalOffer!, startAt: new Date(e.target.value) }
+                                                    })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">End Time</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="input-luxury text-sm"
+                                                    value={new Date(formData.festivalOffer.endAt).toISOString().slice(0, 16)}
+                                                    onChange={e => setFormData({
+                                                        ...formData,
+                                                        festivalOffer: { ...formData.festivalOffer!, endAt: new Date(e.target.value) }
+                                                    })}
+                                                />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="flex items-center space-x-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.festivalOffer.isFlash}
+                                                        onChange={e => setFormData({
+                                                            ...formData,
+                                                            festivalOffer: { ...formData.festivalOffer!, isFlash: e.target.checked }
+                                                        })}
+                                                        className="w-4 h-4 accent-luxury-gold"
+                                                    />
+                                                    <span className="text-xs font-bold flex items-center">
+                                                        <Clock size={14} className="mr-1" /> This is a Flash Sale
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="flex items-center space-x-3">
                                     <input
                                         type="checkbox"
@@ -737,7 +1133,7 @@ export default function AdminDashboard() {
                                         onChange={(e) =>
                                             setFormData({ ...formData, isCustomizable: e.target.checked })
                                         }
-                                        className="w-5 h-5"
+                                        className="w-5 h-5 accent-luxury-gold"
                                     />
                                     <label htmlFor="customizable" className="text-sm font-medium">
                                         This product is customizable

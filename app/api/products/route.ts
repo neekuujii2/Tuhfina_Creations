@@ -37,6 +37,7 @@ export async function POST(request: Request) {
       category,
       images,
       isCustomizable,
+      festivalOffer,
     } = body;
 
     // 🔒 HARD VALIDATION (SAFE)
@@ -75,6 +76,7 @@ export async function POST(request: Request) {
       category: String(category),
       images: normalizedImages,
       isCustomizable: Boolean(isCustomizable),
+      festivalOffer: festivalOffer || undefined,
     });
 
     return NextResponse.json(newProduct, { status: 201 });

@@ -8,8 +8,9 @@ import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { productService } from '@/lib/services/productService';
 import { orderService } from '@/lib/services/orderService';
-import { Product, Order } from '@/lib/types';
+import { Product, Order, CategoryOffer, FestivalConfig } from '@/lib/types';
 import { NEXT_PUBLIC_RAZORPAY_KEY_ID } from '@/lib/clientConfig';
+import { resolveProductPrice } from '@/lib/saleUtils';
 
 interface CartItemWithDetails {
     productId: string;
@@ -33,6 +34,8 @@ export default function CheckoutPage() {
     const router = useRouter();
 
     const [cartItems, setCartItems] = useState<CartItemWithDetails[]>([]);
+    const [categoryOffers, setCategoryOffers] = useState<CategoryOffer[]>([]);
+    const [festivalConfig, setFestivalConfig] = useState<FestivalConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
@@ -44,22 +47,32 @@ export default function CheckoutPage() {
     const [pincode, setPincode] = useState('');
     const [phone, setPhone] = useState('');
 
-    const loadCartDetails = useCallback(async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
-        const itemsWithDetails: CartItemWithDetails[] = [];
+        try {
+            const [categoryOffersData, festivalConfigData] = await Promise.all([
+                fetch('/api/category-offers').then(res => res.json()),
+                fetch('/api/festival-config').then(res => res.json()),
+            ]);
+            setCategoryOffers(categoryOffersData);
+            setFestivalConfig(festivalConfigData);
 
-        for (const item of cart) {
-            const product = await productService.getProduct(item.productId);
-            if (product) {
-                itemsWithDetails.push({
-                    ...item,
-                    product,
-                });
+            const itemsWithDetails: CartItemWithDetails[] = [];
+            for (const item of cart) {
+                const product = await productService.getProduct(item.productId);
+                if (product) {
+                    itemsWithDetails.push({
+                        ...item,
+                        product,
+                    });
+                }
             }
+            setCartItems(itemsWithDetails);
+        } catch (error) {
+            console.error('Error loading data:', error);
+        } finally {
+            setLoading(false);
         }
-
-        setCartItems(itemsWithDetails);
-        setLoading(false);
     }, [cart]);
 
     useEffect(() => {
@@ -68,12 +81,20 @@ export default function CheckoutPage() {
             return;
         }
         if (user) {
-            loadCartDetails();
+            loadData();
         }
-    }, [user, loadCartDetails, router]);
+    }, [user, loadData, router, loading]);
+
+    const subtotal = cartItems.reduce(
+        (sum, item) => sum + item.product.price * item.quantity,
+        0
+    );
 
     const total = cartItems.reduce(
-        (sum, item) => sum + item.product.price * item.quantity,
+        (sum, item) => {
+            const status = resolveProductPrice(item.product, categoryOffers, festivalConfig);
+            return sum + status.currentPrice * item.quantity;
+        },
         0
     );
 
@@ -172,14 +193,17 @@ export default function CheckoutPage() {
             const orderData: Omit<Order, 'id' | 'createdAt'> = {
                 userId: user.uid,
                 userEmail: user.email!,
-                items: cartItems.map(item => ({
-                    productId: item.productId,
-                    title: item.product.title,
-                    price: item.product.price,
-                    quantity: item.quantity,
-                    imageUrl: item.product.images[0] || '',
-                    customization: item.customization,
-                })),
+                items: cartItems.map(item => {
+                    const status = resolveProductPrice(item.product, categoryOffers, festivalConfig);
+                    return {
+                        productId: item.productId,
+                        title: item.product.title,
+                        price: status.currentPrice,
+                        quantity: item.quantity,
+                        imageUrl: item.product.images[0] || '',
+                        customization: item.customization,
+                    };
+                }),
                 totalAmount: total,
                 status: 'pending',
                 shippingAddress: {
@@ -368,7 +392,7 @@ export default function CheckoutPage() {
                                             </p>
                                         </div>
                                         <span className="text-sm font-semibold text-luxury-gold">
-                                            ₹{item.product.price * item.quantity}
+                                            ₹{resolveProductPrice(item.product, categoryOffers, festivalConfig).currentPrice * item.quantity}
                                         </span>
                                     </div>
                                 ))}
@@ -377,8 +401,14 @@ export default function CheckoutPage() {
                             <div className="border-t border-gray-300 pt-4 space-y-2">
                                 <div className="flex justify-between text-luxury-gray">
                                     <span>Subtotal</span>
-                                    <span>₹{total}</span>
+                                    <span>₹{subtotal}</span>
                                 </div>
+                                {subtotal > total && (
+                                    <div className="flex justify-between text-green-600 font-medium">
+                                        <span>Sale Savings</span>
+                                        <span>-₹{subtotal - total}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-luxury-gray">
                                     <span>Shipping</span>
                                     <span>FREE</span>

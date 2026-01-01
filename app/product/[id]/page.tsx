@@ -3,11 +3,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Product } from '@/lib/types';
+import { Product, CategoryOffer, FestivalConfig } from '@/lib/types';
 import { productService } from '@/lib/services/productService';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ShoppingCart, Minus, Plus, Upload, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Minus, Plus, Upload, ArrowLeft, Sparkles, Clock } from 'lucide-react';
+import { resolveProductPrice } from '@/lib/saleUtils';
+import CountdownTimer from '@/components/CountdownTimer';
 
 export default function ProductPage() {
     const params = useParams();
@@ -15,6 +17,8 @@ export default function ProductPage() {
     const productId = params.id as string;
 
     const [product, setProduct] = useState<Product | null>(null);
+    const [categoryOffers, setCategoryOffers] = useState<CategoryOffer[]>([]);
+    const [festivalConfig, setFestivalConfig] = useState<FestivalConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
     const [selectedImage, setSelectedImage] = useState(0);
@@ -28,21 +32,27 @@ export default function ProductPage() {
     const { addToCart } = useCart();
     const { user } = useAuth();
 
-    const loadProduct = useCallback(async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const fetchedProduct = await productService.getProduct(productId);
+            const [fetchedProduct, categoryOffersData, festivalConfigData] = await Promise.all([
+                productService.getProduct(productId),
+                fetch('/api/category-offers').then(res => res.json()),
+                fetch('/api/festival-config').then(res => res.json()),
+            ]);
             setProduct(fetchedProduct);
+            setCategoryOffers(categoryOffersData);
+            setFestivalConfig(festivalConfigData);
         } catch (error) {
-            console.error('Error loading product:', error);
+            console.error('Error loading data:', error);
         } finally {
             setLoading(false);
         }
     }, [productId]);
 
     useEffect(() => {
-        loadProduct();
-    }, [loadProduct]);
+        loadData();
+    }, [loadData]);
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -179,14 +189,51 @@ export default function ProductPage() {
                             {product.title}
                         </h1>
 
-                        <div className="flex items-center space-x-4 mb-6">
-                            <span className="text-4xl font-bold text-luxury-gold">
-                                ₹{product.price}
-                            </span>
+                        <div className="flex flex-col mb-6">
+                            {(() => {
+                                const status = product ? resolveProductPrice(product, categoryOffers, festivalConfig) : null;
+                                if (status?.isSaleActive) {
+                                    return (
+                                        <div className="space-y-4">
+                                            <div className="flex flex-wrap gap-2">
+                                                <div className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center shadow-sm text-white ${status.isFlash ? 'bg-red-600' : 'bg-luxury-gold'}`}>
+                                                    <Sparkles size={14} className="mr-2" />
+                                                    {status.label}
+                                                </div>
+                                                {status.isFlash && (
+                                                    <CountdownTimer
+                                                        expiryDate={product?.festivalOffer?.isFlash ? new Date(product.festivalOffer.endAt) : new Date(categoryOffers.find(o => o.category === product?.category)?.endAt || 0)}
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="flex items-center space-x-4">
+                                                <span className="text-4xl font-bold text-luxury-gold">
+                                                    ₹{status.currentPrice}
+                                                </span>
+                                                <span className="text-xl text-luxury-gray line-through">
+                                                    ₹{product?.price}
+                                                </span>
+                                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-bold">
+                                                    SAVE ₹{product!.price - status.currentPrice}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div className="flex items-center space-x-4">
+                                        <span className="text-4xl font-bold text-luxury-gold">
+                                            ₹{product?.price}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
                             {product.isCustomizable && (
-                                <span className="bg-luxury-gold text-white text-sm px-4 py-1 rounded-full font-semibold">
-                                    Customizable
-                                </span>
+                                <div className="mt-4">
+                                    <span className="bg-luxury-gold text-white text-sm px-4 py-1 rounded-full font-semibold">
+                                        Customizable
+                                    </span>
+                                </div>
                             )}
                         </div>
 

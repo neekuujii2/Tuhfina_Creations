@@ -101,45 +101,82 @@ export async function POST(request: Request) {
             orderId
         } = await request.json();
 
-        // 1. Verify Signature
+        // 1. SECURE SIGNATURE VERIFICATION
+        // It is CRITICAL to verify the signature on the server side to prevent
+        // malicious users from spoofing successful payments.
+        // The signature is a HMAC-SHA256 hash of (order_id + "|" + payment_id) 
+        // using the Razorpay Key Secret.
         const body = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSignature = crypto
             .createHmac("sha256", RAZORPAY_KEY_SECRET)
             .update(body.toString())
             .digest("hex");
 
-        if (expectedSignature === razorpay_signature) {
-            // 2. Connect to DB and Fetch Order Data
-            await dbConnect();
-            const order = await Order.findById(orderId);
+        const isSignatureValid = expectedSignature === razorpay_signature;
 
-            if (!order) {
-                return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-            }
-
-            // 3. Generate PDF
-            const pdfBuffer = await generateInvoicePDF(order);
-
-            // 4. Upload to Cloudinary
-            const downloadURL = await uploadToCloudinary(pdfBuffer, orderId);
-
-            // 5. Update Order in MongoDB
-            order.paymentStatus = 'PAID';
-            order.razorpayOrderId = razorpay_order_id;
-            order.razorpayPaymentId = razorpay_payment_id;
-            order.razorpaySignature = razorpay_signature;
-            order.invoiceUrl = downloadURL;
-            order.status = 'processing';
-            order.paidAt = new Date();
-
-            await order.save();
-
-            return NextResponse.json({ success: true, invoiceUrl: downloadURL });
-        } else {
+        if (!isSignatureValid) {
+            console.error('Invalid Razorpay signature detected');
             return NextResponse.json({ error: 'Invalid Signature' }, { status: 400 });
         }
+
+        // 2. Connect to DB and Fetch Order
+        await dbConnect();
+        const order = await Order.findById(orderId);
+
+        if (!order) {
+            return NextResponse.json({ error: 'Order not found in database' }, { status: 404 });
+        }
+
+        // 3. IDEMPOTENCY CHECK
+        // If the order is already marked as PAID, we don't need to process it again.
+        // This handles cases where a user might refresh the page or the webhook/frontend
+        // both trigger verification.
+        if (order.paymentStatus === 'PAID') {
+            return NextResponse.json({
+                success: true,
+                message: 'Order already verified',
+                invoiceUrl: order.invoiceUrl
+            });
+        }
+
+        // 4. GENERATE INVOICE
+        // We generate the invoice only AFTER signature verification.
+        let downloadURL = order.invoiceUrl;
+        try {
+            const pdfBuffer = await generateInvoicePDF(order);
+            downloadURL = await uploadToCloudinary(pdfBuffer, orderId);
+        } catch (invoiceError) {
+            console.error('Invoice generation/upload failed:', invoiceError);
+            // We continue even if invoice fails, as payment is successful.
+            // Admin can generate invoice manually later if needed.
+        }
+
+        // 5. UPDATE ORDER STATUS
+        // We update the order in MongoDB with the payment details and set statuses.
+        // paymentStatus = "PAID"
+        // status = "CONFIRMED" (as requested by user)
+        order.paymentStatus = 'PAID';
+        order.status = 'CONFIRMED';
+        order.razorpayOrderId = razorpay_order_id;
+        order.razorpayPaymentId = razorpay_payment_id;
+        order.razorpaySignature = razorpay_signature;
+        order.invoiceUrl = downloadURL;
+        order.paidAt = new Date();
+
+        await order.save();
+
+        console.log(`Order ${orderId} successfully verified and marked as PAID/CONFIRMED`);
+
+        return NextResponse.json({
+            success: true,
+            message: 'Payment verified successfully',
+            invoiceUrl: downloadURL
+        });
+
     } catch (error: any) {
-        console.error('Payment verification failed:', error);
-        return NextResponse.json({ error: error.message || 'Payment verification failed' }, { status: 500 });
+        console.error('Payment verification system error:', error);
+        return NextResponse.json({
+            error: error.message || 'Internal server error during verification'
+        }, { status: 500 });
     }
 }

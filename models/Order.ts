@@ -32,7 +32,7 @@ const OrderSchema = new Schema(
         },
         status: {
             type: String,
-            enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
+            enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'CONFIRMED'],
             default: 'pending',
         },
         paymentStatus: {
@@ -44,6 +44,7 @@ const OrderSchema = new Schema(
         razorpayPaymentId: { type: String },
         razorpaySignature: { type: String },
         invoiceUrl: { type: String },
+        paidAt: { type: Date },
         shippingAddress: {
             name: String,
             address: String,

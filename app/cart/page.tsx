@@ -6,9 +6,10 @@ import Image from 'next/image';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { productService } from '@/lib/services/productService';
-import { Product } from '@/lib/types';
+import { Product, CategoryOffer, FestivalConfig } from '@/lib/types';
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
+import { resolveProductPrice } from '@/lib/saleUtils';
 
 interface CartItemWithDetails {
     productId: string;
@@ -25,32 +26,52 @@ export default function CartPage() {
     const { user } = useAuth();
     const router = useRouter();
     const [cartItems, setCartItems] = useState<CartItemWithDetails[]>([]);
+    const [categoryOffers, setCategoryOffers] = useState<CategoryOffer[]>([]);
+    const [festivalConfig, setFestivalConfig] = useState<FestivalConfig | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const loadCartDetails = useCallback(async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
-        const itemsWithDetails: CartItemWithDetails[] = [];
+        try {
+            const [categoryOffersData, festivalConfigData] = await Promise.all([
+                fetch('/api/category-offers').then(res => res.json()),
+                fetch('/api/festival-config').then(res => res.json()),
+            ]);
+            setCategoryOffers(categoryOffersData);
+            setFestivalConfig(festivalConfigData);
 
-        for (const item of cart) {
-            const product = await productService.getProduct(item.productId);
-            if (product) {
-                itemsWithDetails.push({
-                    ...item,
-                    product,
-                });
+            const itemsWithDetails: CartItemWithDetails[] = [];
+            for (const item of cart) {
+                const product = await productService.getProduct(item.productId);
+                if (product) {
+                    itemsWithDetails.push({
+                        ...item,
+                        product,
+                    });
+                }
             }
+            setCartItems(itemsWithDetails);
+        } catch (error) {
+            console.error('Error loading data:', error);
+        } finally {
+            setLoading(false);
         }
-
-        setCartItems(itemsWithDetails);
-        setLoading(false);
     }, [cart]);
 
     useEffect(() => {
-        loadCartDetails();
-    }, [loadCartDetails]);
+        loadData();
+    }, [loadData]);
+
+    const subtotal = cartItems.reduce(
+        (sum, item) => sum + item.product.price * item.quantity,
+        0
+    );
 
     const total = cartItems.reduce(
-        (sum, item) => sum + item.product.price * item.quantity,
+        (sum, item) => {
+            const status = resolveProductPrice(item.product, categoryOffers, festivalConfig);
+            return sum + status.currentPrice * item.quantity;
+        },
         0
     );
 
@@ -170,9 +191,31 @@ export default function CartPage() {
                                             </div>
 
                                             <div className="flex items-center space-x-4">
-                                                <span className="text-2xl font-bold text-luxury-gold">
-                                                    ₹{item.product.price * item.quantity}
-                                                </span>
+                                                <div className="flex flex-col items-end">
+                                                    {(() => {
+                                                        const status = resolveProductPrice(item.product, categoryOffers, festivalConfig);
+                                                        if (status.isSaleActive) {
+                                                            return (
+                                                                <>
+                                                                    <span className="text-sm text-luxury-gray line-through">
+                                                                        ₹{item.product.price * item.quantity}
+                                                                    </span>
+                                                                    <span className="text-2xl font-bold text-luxury-gold">
+                                                                        ₹{status.currentPrice * item.quantity}
+                                                                    </span>
+                                                                    <span className="text-[10px] bg-luxury-gold text-white px-2 py-0.5 rounded font-bold uppercase">
+                                                                        {status.label}
+                                                                    </span>
+                                                                </>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <span className="text-2xl font-bold text-luxury-gold">
+                                                                ₹{item.product.price * item.quantity}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </div>
                                                 <button
                                                     onClick={() => removeFromCart(item.productId)}
                                                     className="text-red-500 hover:text-red-700 transition-colors"
@@ -197,8 +240,14 @@ export default function CartPage() {
                             <div className="space-y-4 mb-6">
                                 <div className="flex justify-between text-luxury-gray">
                                     <span>Subtotal</span>
-                                    <span>₹{total}</span>
+                                    <span>₹{subtotal}</span>
                                 </div>
+                                {subtotal > total && (
+                                    <div className="flex justify-between text-green-600 font-medium">
+                                        <span>Sale Savings</span>
+                                        <span>-₹{subtotal - total}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-luxury-gray">
                                     <span>Shipping</span>
                                     <span>Calculated at checkout</span>

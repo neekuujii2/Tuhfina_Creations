@@ -27,6 +27,13 @@ const ProductSchema = new Schema(
             type: Boolean,
             default: false,
         },
+        festivalOffer: {
+            price: Number,
+            startAt: Date,
+            endAt: Date,
+            label: String,
+            isFlash: Boolean,
+        },
     },
     {
         timestamps: true,

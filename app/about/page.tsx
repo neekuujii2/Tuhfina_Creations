@@ -86,11 +86,13 @@ export default async function AboutPage() {
                             </div>
                         </div>
                         <div className="relative h-[500px] rounded-2xl overflow-hidden shadow-2xl animate-scale-in">
-                            <Image
-                                src="https://unsplash.com/photos/young-female-florist-working-with-flowers-making-bouquet-y2XrVa7l9b8"
-                                alt="Crafting Process"
-                                fill
-                                className="object-cover"
+                            <video
+                                src="/videos/crafting-process.mp4"
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="w-full h-full object-cover"
                             />
                             <div className="absolute inset-0 bg-black/10"></div>
                         </div>
