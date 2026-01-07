@@ -8,6 +8,7 @@ export async function POST(req: NextRequest) {
     try {
         await dbConnect();
         const { email, password } = await req.json();
+        const ADMIN_EMAIL = 'Tuhfinacreations@gmail.com';
 
         if (!email || !password) {
             return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -16,6 +17,12 @@ export async function POST(req: NextRequest) {
         const user = await User.findOne({ email });
         if (!user) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+        }
+
+        // Auto-promote to admin if email matches
+        if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && user.role !== 'ADMIN') {
+            user.role = 'ADMIN';
+            await user.save();
         }
 
         if (!user.isVerified) {

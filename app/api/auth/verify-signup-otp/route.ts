@@ -23,10 +23,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid OTP' }, { status: 400 });
         }
 
+        const ADMIN_EMAIL = 'Tuhfinacreations@gmail.com';
+
         // Mark user as verified
         const user = await User.findOneAndUpdate(
             { email },
-            { isVerified: true },
+            {
+                isVerified: true,
+                role: email.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'ADMIN' : 'USER'
+            },
             { new: true }
         );
 

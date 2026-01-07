@@ -18,6 +18,13 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
+        // Auto-promote to admin if email matches
+        const ADMIN_EMAIL = 'Tuhfinacreations@gmail.com';
+        if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && user.role !== 'ADMIN') {
+            user.role = 'ADMIN';
+            await user.save();
+        }
+
         return NextResponse.json({ user }, { status: 200 });
 
     } catch (error: any) {
