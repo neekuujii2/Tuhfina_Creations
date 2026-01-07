@@ -15,8 +15,9 @@ interface User {
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    requestOtp: (email: string) => Promise<void>;
-    verifyOtp: (email: string, otp: string, name?: string) => Promise<void>;
+    signUp: (email: string, password: string, confirmPassword: string) => Promise<void>;
+    verifySignupOtp: (email: string, otp: string) => Promise<void>;
+    signIn: (email: string, password: string) => Promise<void>;
     signOut: () => Promise<void>;
     isAdmin: boolean;
     refreshUser: () => Promise<void>;
@@ -25,8 +26,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
-    requestOtp: async () => { },
-    verifyOtp: async () => { },
+    signUp: async () => { },
+    verifySignupOtp: async () => { },
+    signIn: async () => { },
     signOut: async () => { },
     isAdmin: false,
     refreshUser: async () => { },
@@ -42,13 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const refreshUser = async () => {
         try {
             const res = await fetch('/api/auth/me');
-            const data = await res.json();
-            if (data.user) {
-                setUser({
-                    ...data.user,
-                    id: data.user._id,
-                    uid: data.user._id,
-                });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.user) {
+                    setUser({
+                        ...data.user,
+                        id: data.user._id,
+                        uid: data.user._id,
+                    });
+                } else {
+                    setUser(null);
+                }
             } else {
                 setUser(null);
             }
@@ -64,36 +70,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshUser();
     }, []);
 
-    const requestOtp = async (email: string) => {
-        const res = await fetch('/api/auth/request-otp', {
+    const signUp = async (email: string, password: string, confirmPassword: string) => {
+        const res = await fetch('/api/auth/signup', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
+            body: JSON.stringify({ email, password, confirmPassword }),
         });
 
         const data = await res.json();
         if (!res.ok) {
-            throw new Error(data.error || 'Failed to request OTP');
+            throw new Error(data.error || 'Signup failed');
         }
     };
 
-    const verifyOtp = async (email: string, otp: string, name?: string) => {
-        const res = await fetch('/api/auth/verify-otp', {
+    const verifySignupOtp = async (email: string, otp: string) => {
+        const res = await fetch('/api/auth/verify-signup-otp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, otp, name }),
+            body: JSON.stringify({ email, otp }),
         });
 
         const data = await res.json();
         if (!res.ok) {
-            throw new Error(data.error || 'Failed to verify OTP');
+            throw new Error(data.error || 'Verification failed');
+        }
+    };
+
+    const signIn = async (email: string, password: string) => {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            if (data.notVerified) {
+                throw new Error('NOT_VERIFIED');
+            }
+            throw new Error(data.error || 'Login failed');
         }
 
         if (data.user) {
             setUser({
                 ...data.user,
-                id: data.user._id,
-                uid: data.user._id,
+                id: data.user.id,
+                uid: data.user.id,
             });
         }
     };
@@ -107,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isAdmin = user?.role === 'ADMIN';
 
     return (
-        <AuthContext.Provider value={{ user, loading, requestOtp, verifyOtp, signOut, isAdmin, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, signUp, verifySignupOtp, signIn, signOut, isAdmin, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

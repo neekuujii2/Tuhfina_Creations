@@ -13,6 +13,14 @@ const UserSchema = new Schema(
             type: String,
             required: false,
         },
+        password: {
+            type: String,
+            required: [true, 'Password is required'],
+        },
+        isVerified: {
+            type: Boolean,
+            default: false,
+        },
         role: {
             type: String,
             enum: ['ADMIN', 'USER'],

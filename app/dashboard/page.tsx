@@ -9,7 +9,7 @@ import { Order } from '@/lib/types';
 import { Package, User, CheckCircle } from 'lucide-react';
 
 function DashboardContent() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderSuccess = searchParams.get('orderSuccess');
@@ -32,20 +32,20 @@ function DashboardContent() {
   }, [user]);
 
   useEffect(() => {
-    if (user === null && !loading) {
-      router.push('/login');
-      return;
-    }
+    if (!authLoading) {
+      if (user === null) {
+        router.replace('/login?redirect=/dashboard');
+        return;
+      }
 
-    if (isAdmin) {
-      router.push('/admin');
-      return;
-    }
+      if (isAdmin) {
+        router.replace('/admin');
+        return;
+      }
 
-    if (user) {
       loadOrders();
     }
-  }, [user, isAdmin, loadOrders, router]);
+  }, [user, isAdmin, authLoading, loadOrders, router]);
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -66,13 +66,15 @@ function DashboardContent() {
     }
   };
 
-  if (loading) {
+  if (authLoading || (loading && user)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-luxury-gold border-t-transparent"></div>
       </div>
     );
   }
+
+  if (!user) return null;
 
   return (
     <div className="bg-white min-h-screen">
