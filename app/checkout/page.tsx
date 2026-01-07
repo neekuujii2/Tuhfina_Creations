@@ -30,7 +30,7 @@ declare global {
 
 export default function CheckoutPage() {
     const { cart, clearCart } = useCart();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const router = useRouter();
 
     const [cartItems, setCartItems] = useState<CartItemWithDetails[]>([]);
@@ -57,17 +57,19 @@ export default function CheckoutPage() {
             setCategoryOffers(categoryOffersData);
             setFestivalConfig(festivalConfigData);
 
-            const itemsWithDetails: CartItemWithDetails[] = [];
-            for (const item of cart) {
-                const product = await productService.getProduct(item.productId);
-                if (product) {
-                    itemsWithDetails.push({
-                        ...item,
-                        product,
-                    });
-                }
-            }
-            setCartItems(itemsWithDetails);
+            const itemsWithDetails: (CartItemWithDetails | null)[] = await Promise.all(
+                cart.map(async (item) => {
+                    const product = await productService.getProduct(item.productId);
+                    if (product) {
+                        return {
+                            ...item,
+                            product,
+                        };
+                    }
+                    return null;
+                })
+            );
+            setCartItems(itemsWithDetails.filter((item): item is CartItemWithDetails => item !== null));
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -76,14 +78,14 @@ export default function CheckoutPage() {
     }, [cart]);
 
     useEffect(() => {
-        if (user === null && !loading) {
+        if (!authLoading && user === null) {
             router.push('/login');
             return;
         }
         if (user) {
             loadData();
         }
-    }, [user, loadData, router, loading]);
+    }, [user, loadData, router, authLoading]);
 
     const subtotal = cartItems.reduce(
         (sum, item) => sum + item.product.price * item.quantity,
@@ -163,6 +165,9 @@ export default function CheckoutPage() {
                 }
             };
 
+            if (typeof window.Razorpay === 'undefined') {
+                throw new Error('Razorpay SDK not loaded. Please check your internet connection.');
+            }
             const rzp = new window.Razorpay(options);
             rzp.on('payment.failed', function (response: any) {
                 alert('Payment Failed: ' + response.error.description);

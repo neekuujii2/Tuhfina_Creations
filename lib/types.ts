@@ -108,3 +108,13 @@ export const CATEGORIES = [
 ] as const;
 
 export const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'Tuhfinacreations@gmail.com';
+
+export interface Notification {
+    _id: string;
+    type: 'NEW_ORDER';
+    title: string;
+    message: string;
+    orderId: string;
+    isRead: boolean;
+    createdAt: string;
+}

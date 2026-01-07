@@ -61,8 +61,14 @@ export const productService = {
 
     // Get single product
     async getProduct(id: string): Promise<Product | null> {
-        const products = await this.getAllProducts();
-        return products.find(p => p.id === id) || null;
+        const res = await fetch(`/api/products/${id}`);
+        if (!res.ok) return null;
+        const p = await res.json();
+        return {
+            ...p,
+            id: p._id,
+            createdAt: new Date(p.createdAt)
+        };
     },
 
     // Create product (Admin only)

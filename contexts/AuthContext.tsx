@@ -1,33 +1,35 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import {
-    User as FirebaseUser,
-    onAuthStateChanged,
-    signInWithEmailAndPassword,
-    createUserWithEmailAndPassword,
-    signOut as firebaseSignOut,
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
-import { User, ADMIN_EMAIL } from '@/lib/types';
+import { useRouter } from 'next/navigation';
+
+interface User {
+    id: string;
+    uid: string;
+    email: string;
+    name?: string;
+    role: 'ADMIN' | 'USER';
+    createdAt: string;
+}
 
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    signIn: (email: string, password: string) => Promise<void>;
-    signUp: (email: string, password: string) => Promise<void>;
+    requestOtp: (email: string) => Promise<void>;
+    verifyOtp: (email: string, otp: string, name?: string) => Promise<void>;
     signOut: () => Promise<void>;
     isAdmin: boolean;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
-    signIn: async () => { },
-    signUp: async () => { },
+    requestOtp: async () => { },
+    verifyOtp: async () => { },
     signOut: async () => { },
     isAdmin: false,
+    refreshUser: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -35,86 +37,77 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
 
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-            if (firebaseUser) {
-                try {
-                    // Get user data from Firestore
-                    const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        // Force admin role if email matches (case-insensitive), otherwise trust Firestore
-                        const role = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'ADMIN' : userData.role;
-
-                        setUser({
-                            uid: firebaseUser.uid,
-                            email: firebaseUser.email!,
-                            role: role,
-                            createdAt: userData.createdAt?.toDate() || new Date(),
-                        });
-                    } else {
-                        // Create user document if it doesn't exist
-                        const role = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'ADMIN' : 'USER';
-                        const newUser: User = {
-                            uid: firebaseUser.uid,
-                            email: firebaseUser.email!,
-                            role,
-                            createdAt: new Date(),
-                        };
-
-                        await setDoc(doc(db, 'users', firebaseUser.uid), {
-                            email: firebaseUser.email,
-                            role,
-                            createdAt: new Date(),
-                        });
-
-                        setUser(newUser);
-                    }
-                } catch (error: any) {
-                    console.error('Error fetching user data:', error);
-                    // If offline or error, create a temporary user object with default role
-                    const role = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'ADMIN' : 'USER';
-                    setUser({
-                        uid: firebaseUser.uid,
-                        email: firebaseUser.email!,
-                        role,
-                        createdAt: new Date(),
-                    });
-                }
+    const refreshUser = async () => {
+        try {
+            const res = await fetch('/api/auth/me');
+            const data = await res.json();
+            if (data.user) {
+                setUser({
+                    ...data.user,
+                    id: data.user._id,
+                    uid: data.user._id,
+                });
             } else {
                 setUser(null);
             }
+        } catch (error) {
+            console.error('Error refreshing user:', error);
+            setUser(null);
+        } finally {
             setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, []);
-
-    const signIn = async (email: string, password: string) => {
-        await signInWithEmailAndPassword(auth, email, password);
+        }
     };
 
-    const signUp = async (email: string, password: string) => {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const role = email === ADMIN_EMAIL ? 'ADMIN' : 'USER';
+    useEffect(() => {
+        refreshUser();
+    }, []);
 
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-            email,
-            role,
-            createdAt: new Date(),
+    const requestOtp = async (email: string) => {
+        const res = await fetch('/api/auth/request-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
         });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Failed to request OTP');
+        }
+    };
+
+    const verifyOtp = async (email: string, otp: string, name?: string) => {
+        const res = await fetch('/api/auth/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp, name }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Failed to verify OTP');
+        }
+
+        if (data.user) {
+            setUser({
+                ...data.user,
+                id: data.user._id,
+                uid: data.user._id,
+            });
+        }
     };
 
     const signOut = async () => {
-        await firebaseSignOut(auth);
+        await fetch('/api/auth/logout', { method: 'POST' });
+        setUser(null);
+        router.push('/login');
     };
 
     const isAdmin = user?.role === 'ADMIN';
 
     return (
-        <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, isAdmin }}>
+        <AuthContext.Provider value={{ user, loading, requestOtp, verifyOtp, signOut, isAdmin, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

@@ -113,7 +113,8 @@ function DashboardContent() {
               </h2>
               <p className="text-luxury-gray mt-1">{user?.email}</p>
               <p className="text-sm text-luxury-gray mt-1">
-                Member since {user?.createdAt?.toLocaleDateString()}
+                Member since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''}
+
               </p>
             </div>
           </div>

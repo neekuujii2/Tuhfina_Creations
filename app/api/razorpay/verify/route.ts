@@ -3,6 +3,8 @@ import crypto from 'crypto';
 import { RAZORPAY_KEY_SECRET } from '@/lib/razorpayConfig';
 import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
+import Notification from '@/models/Notification';
+import { sendEmailNotification, sendTelegramNotification } from '@/lib/notificationUtils';
 import cloudinary from '@/lib/cloudinary';
 import PDFDocument from 'pdfkit';
 
@@ -164,6 +166,29 @@ export async function POST(request: Request) {
         order.paidAt = new Date();
 
         await order.save();
+
+        // 6. ADMIN NOTIFICATIONS
+        // We trigger notifications only after successful order save.
+        // This is async and non-blocking for the payment verification process.
+        try {
+            const existingNotification = await Notification.findOne({ orderId: order._id });
+            if (!existingNotification) {
+                await Notification.create({
+                    type: 'NEW_ORDER',
+                    title: 'New Order Received',
+                    message: `Order #${order._id.toString().substring(0, 8)} paid successfully`,
+                    orderId: order._id,
+                    isRead: false
+                });
+
+                // Fire and forget (non-blocking)
+                sendEmailNotification(order).catch(err => console.error('Email notify error:', err));
+                sendTelegramNotification(order).catch(err => console.error('Telegram notify error:', err));
+            }
+        } catch (notifError) {
+            console.error('Notification system error:', notifError);
+            // We do NOT block the response if notifications fail.
+        }
 
         console.log(`Order ${orderId} successfully verified and marked as PAID/CONFIRMED`);
 

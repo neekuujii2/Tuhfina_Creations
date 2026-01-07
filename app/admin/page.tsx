@@ -21,6 +21,7 @@ import {
     Tag,
     Clock,
 } from 'lucide-react';
+import NotificationBell from '@/components/NotificationBell';
 
 export default function AdminDashboard() {
     const { user, isAdmin, loading: authLoading } = useAuth();
@@ -391,11 +392,14 @@ export default function AdminDashboard() {
         <div className="bg-white min-h-screen">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
                 {/* Header */}
-                <div className="mb-12">
-                    <h1 className="text-4xl font-serif font-bold text-luxury-black mb-2">
-                        Admin Dashboard
-                    </h1>
-                    <p className="text-luxury-gray">Manage products and orders</p>
+                <div className="mb-12 flex justify-between items-center">
+                    <div>
+                        <h1 className="text-4xl font-serif font-bold text-luxury-black mb-2">
+                            Admin Dashboard
+                        </h1>
+                        <p className="text-luxury-gray">Manage products and orders</p>
+                    </div>
+                    <NotificationBell />
                 </div>
 
                 {/* Stats */}

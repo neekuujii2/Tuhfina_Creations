@@ -10,6 +10,7 @@ import { Product, CategoryOffer, FestivalConfig } from '@/lib/types';
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { resolveProductPrice } from '@/lib/saleUtils';
+import { RefreshCcw } from 'lucide-react';
 
 interface CartItemWithDetails {
     productId: string;
@@ -23,7 +24,7 @@ interface CartItemWithDetails {
 
 export default function CartPage() {
     const { cart, updateQuantity, removeFromCart } = useCart();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const router = useRouter();
     const [cartItems, setCartItems] = useState<CartItemWithDetails[]>([]);
     const [categoryOffers, setCategoryOffers] = useState<CategoryOffer[]>([]);
@@ -40,17 +41,19 @@ export default function CartPage() {
             setCategoryOffers(categoryOffersData);
             setFestivalConfig(festivalConfigData);
 
-            const itemsWithDetails: CartItemWithDetails[] = [];
-            for (const item of cart) {
-                const product = await productService.getProduct(item.productId);
-                if (product) {
-                    itemsWithDetails.push({
-                        ...item,
-                        product,
-                    });
-                }
-            }
-            setCartItems(itemsWithDetails);
+            const itemsWithDetails: (CartItemWithDetails | null)[] = await Promise.all(
+                cart.map(async (item) => {
+                    const product = await productService.getProduct(item.productId);
+                    if (product) {
+                        return {
+                            ...item,
+                            product,
+                        };
+                    }
+                    return null;
+                })
+            );
+            setCartItems(itemsWithDetails.filter((item): item is CartItemWithDetails => item !== null));
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -76,6 +79,7 @@ export default function CartPage() {
     );
 
     const handleCheckout = () => {
+        if (authLoading) return;
         if (!user) {
             router.push('/login');
             return;
@@ -262,9 +266,10 @@ export default function CartPage() {
 
                             <button
                                 onClick={handleCheckout}
-                                className="w-full btn-luxury mb-4"
+                                disabled={authLoading}
+                                className="w-full btn-luxury mb-4 flex items-center justify-center space-x-2"
                             >
-                                Proceed to Checkout
+                                {authLoading ? <RefreshCcw className="animate-spin" size={20} /> : 'Proceed to Checkout'}
                             </button>
 
                             <Link
