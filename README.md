@@ -34,7 +34,19 @@ A production-ready, luxury e-commerce website for handcrafted gifts built with N
 - **Icons**: Lucide React
 - **Animations**: Framer Motion
 
-## 📁 Project Structure
+## � Docker
+
+### Build the image
+```bash
+docker build -t tuhfina-creation .
+```
+
+### Run the container
+```bash
+docker run -p 3000:3000 --env-file .env.local tuhfina-creation
+```
+
+## �📁 Project Structure
 
 ```
 Tuhfina_Creations/
