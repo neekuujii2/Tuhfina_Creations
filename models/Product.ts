@@ -19,6 +19,10 @@ const ProductSchema = new Schema(
             type: String,
             required: [true, 'Please provide a category'],
         },
+        department: {
+            type: String,
+            default: 'General',
+        },
         images: {
             type: [String],
             required: [true, 'Please provide at least one image URL'],

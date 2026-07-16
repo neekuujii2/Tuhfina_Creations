@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { productService } from '@/lib/services/productService';
 import { orderService } from '@/lib/services/orderService';
-import { Product, Order, CATEGORIES, FestivalOffer, CategoryOffer, FestivalConfig } from '@/lib/types';
+import { Product, Order, CATEGORIES, CategoryOffer, FestivalConfig } from '@/lib/types';
 import Image from 'next/image';
 import {
     Plus,
@@ -20,12 +20,35 @@ import {
     Calendar,
     Tag,
     Clock,
+    LayoutDashboard,
+    Settings,
+    FileSpreadsheet,
+    DollarSign,
+    LogOut,
 } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
+import { useToast } from '@/components/ui/toast';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+
+const jewelleryCollections = [
+    'Rings',
+    'Earrings',
+    'Necklaces',
+    'Bracelets',
+    'Mangalsutra',
+    'Wedding Collection',
+];
+
+const ALL_ADMIN_CATEGORIES = [
+    ...CATEGORIES,
+    ...jewelleryCollections
+];
 
 export default function AdminDashboard() {
-    const { user, isAdmin, loading: authLoading } = useAuth();
+    const { user, isAdmin, loading: authLoading, signOut } = useAuth();
     const router = useRouter();
+    const { toast } = useToast();
 
     const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'categories' | 'settings'>('products');
     const [products, setProducts] = useState<Product[]>([]);
@@ -43,7 +66,7 @@ export default function AdminDashboard() {
         title: string;
         description: string;
         price: string;
-        category: typeof CATEGORIES[number];
+        category: string;
         isCustomizable: boolean;
         festivalOffer?: {
             price: number;
@@ -56,7 +79,7 @@ export default function AdminDashboard() {
         title: '',
         description: '',
         price: '',
-        category: CATEGORIES[0],
+        category: ALL_ADMIN_CATEGORIES[0],
         isCustomizable: false,
     });
 
@@ -70,7 +93,7 @@ export default function AdminDashboard() {
     });
 
     const [categoryOfferForm, setCategoryOfferForm] = useState<Omit<CategoryOffer, '_id'>>({
-        category: CATEGORIES[0],
+        category: ALL_ADMIN_CATEGORIES[0],
         discountPercent: 0,
         fixedPrice: 0,
         startAt: new Date(),
@@ -115,10 +138,11 @@ export default function AdminDashboard() {
             }
         } catch (error) {
             console.error('Error loading data:', error);
+            toast('Failed to load dashboard data', 'error');
         } finally {
             setPageLoading(false);
         }
-    }, []);
+    }, [toast]);
 
     useEffect(() => {
         if (authLoading) return;
@@ -154,10 +178,11 @@ export default function AdminDashboard() {
 
             const data = await response.json();
             setImagePreviews(data.urls);
-            setImageFiles(files); // Keep file refs if needed for UI, but URLs are used for submit
+            setImageFiles(files);
+            toast('Images uploaded successfully!', 'success');
         } catch (error) {
             console.error('Error uploading images:', error);
-            alert('Failed to upload images. Please try again.');
+            toast('Failed to upload images. Please try again.', 'error');
         } finally {
             setUploadingImages(false);
         }
@@ -220,7 +245,7 @@ export default function AdminDashboard() {
                                     title: productData.title,
                                     description: productData.description || '',
                                     price: productData.price || 0,
-                                    category: productData.category || CATEGORIES[0],
+                                    category: productData.category || ALL_ADMIN_CATEGORIES[0],
                                     isCustomizable: productData.isCustomizable || false,
                                 },
                                 [imageSource]
@@ -232,11 +257,11 @@ export default function AdminDashboard() {
                     setCsvProgress(prev => ({ ...prev, current: i + 1 }));
                 }
 
-                alert('CSV Import Completed');
+                toast('CSV Bulk Import Completed!', 'success');
                 loadData();
             } catch (error) {
                 console.error('CSV Parsing Error:', error);
-                alert('Failed to parse CSV');
+                toast('Failed to parse CSV file', 'error');
             } finally {
                 setCsvProcessing(false);
                 if (e.target) e.target.value = '';
@@ -252,7 +277,6 @@ export default function AdminDashboard() {
 
         try {
             if (editingProduct) {
-                // Update existing product
                 await productService.updateProduct(
                     editingProduct.id,
                     {
@@ -261,10 +285,10 @@ export default function AdminDashboard() {
                     },
                     imagePreviews.length > 0 ? imagePreviews : undefined
                 );
+                toast('Product updated successfully!', 'success');
             } else {
-                // Create new product
                 if (imagePreviews.length === 0) {
-                    alert('Please upload at least one image');
+                    toast('Please upload at least one image', 'info');
                     setSubmitting(false);
                     return;
                 }
@@ -276,16 +300,16 @@ export default function AdminDashboard() {
                     },
                     imagePreviews
                 );
+                toast('New product created successfully!', 'success');
             }
 
-            // Reset form and reload
             setShowProductModal(false);
             setEditingProduct(null);
             setFormData({
                 title: '',
                 description: '',
                 price: '',
-                category: CATEGORIES[0],
+                category: ALL_ADMIN_CATEGORIES[0],
                 isCustomizable: false,
                 festivalOffer: undefined
             });
@@ -294,7 +318,7 @@ export default function AdminDashboard() {
             loadData();
         } catch (error) {
             console.error('Error saving product:', error);
-            alert('Failed to save product');
+            toast('Failed to save product details', 'error');
         } finally {
             setSubmitting(false);
         }
@@ -306,7 +330,7 @@ export default function AdminDashboard() {
             title: product.title,
             description: product.description,
             price: product.price.toString(),
-            category: product.category as typeof CATEGORIES[number],
+            category: product.category,
             isCustomizable: product.isCustomizable,
             festivalOffer: product.festivalOffer ? {
                 price: product.festivalOffer.price,
@@ -325,20 +349,22 @@ export default function AdminDashboard() {
 
         try {
             await productService.deleteProduct(id);
+            toast('Product deleted successfully', 'success');
             loadData();
         } catch (error) {
             console.error('Error deleting product:', error);
-            alert('Failed to delete product');
+            toast('Failed to delete product', 'error');
         }
     };
 
     const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
         try {
             await orderService.updateOrderStatus(orderId, status);
+            toast('Order status updated successfully!', 'success');
             loadData();
         } catch (error) {
             console.error('Error updating order status:', error);
-            alert('Failed to update order status');
+            toast('Failed to update order status', 'error');
         }
     };
 
@@ -370,122 +396,221 @@ export default function AdminDashboard() {
             });
 
             if (!saveRes.ok) throw new Error('Failed to save category');
-            alert('Category image updated successfully');
+            toast('Category image updated successfully', 'success');
             loadData();
         } catch (error) {
             console.error('Error updating category image:', error);
-            alert('Failed to update category image');
+            toast('Failed to update category image', 'error');
         } finally {
             setPageLoading(false);
         }
     };
 
-    if (pageLoading) {
+    const handleFestivalConfigUpdate = async () => {
+        try {
+            const res = await fetch('/api/festival-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(festivalForm)
+            });
+            if (res.ok) {
+                toast('Global Festival configuration saved!', 'success');
+                loadData();
+            } else {
+                throw new Error();
+            }
+        } catch {
+            toast('Failed to save festival configuration', 'error');
+        }
+    };
+
+    const handleCategoryOfferSave = async () => {
+        try {
+            const res = await fetch('/api/category-offers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(categoryOfferForm)
+            });
+            if (res.ok) {
+                toast('Category offer saved successfully!', 'success');
+                loadData();
+            } else {
+                throw new Error();
+            }
+        } catch {
+            toast('Failed to save category offer', 'error');
+        }
+    };
+
+    const handleCategoryOfferDelete = async (offerId: string) => {
+        if (!confirm('Are you sure you want to delete this offer?')) return;
+        try {
+            const res = await fetch(`/api/category-offers?id=${offerId}`, { method: 'DELETE' });
+            if (res.ok) {
+                toast('Category offer deleted', 'success');
+                loadData();
+            } else {
+                throw new Error();
+            }
+        } catch {
+            toast('Failed to delete category offer', 'error');
+        }
+    };
+
+    if (pageLoading || authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-luxury-gold border-t-transparent"></div>
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-transparent"></div>
             </div>
         );
     }
 
+    // Calculate sum of order total amounts
+    const totalRevenue = orders.reduce((sum, o) => o.paymentStatus === 'PAID' ? sum + o.totalAmount : sum, 0);
+
     return (
-        <div className="bg-white min-h-screen">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-                {/* Header */}
-                <div className="mb-12 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-4xl font-serif font-bold text-luxury-black mb-2">
-                            Admin Dashboard
-                        </h1>
-                        <p className="text-luxury-gray">Manage products and orders</p>
+        <div className="bg-background min-h-screen flex">
+            {/* Sidebar Navigation */}
+            <aside className="w-68 bg-primary text-white flex flex-col justify-between shrink-0 border-r border-white/10">
+                <div>
+                    {/* Sidebar Brand Header */}
+                    <div className="p-6 border-b border-white/10 flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 overflow-hidden">
+                            <Image src="/logo.jpg" alt="Logo" width={36} height={36} className="object-cover rounded-full" />
+                        </div>
+                        <div>
+                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent block">Manager</span>
+                            <span className="font-serif font-bold text-sm tracking-wider">Tuhfina Control</span>
+                        </div>
                     </div>
-                    <NotificationBell />
+
+                    {/* Sidebar Nav Items */}
+                    <nav className="p-4 space-y-1.5">
+                        <button
+                            onClick={() => setActiveTab('products')}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition ${
+                                activeTab === 'products' ? 'bg-accent text-white shadow-soft font-bold' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                            }`}
+                        >
+                            <Package size={18} /> Products Catalog
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('orders')}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition ${
+                                activeTab === 'orders' ? 'bg-accent text-white shadow-soft font-bold' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                            }`}
+                        >
+                            <ShoppingBag size={18} /> Orders Panel
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('categories')}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition ${
+                                activeTab === 'categories' ? 'bg-accent text-white shadow-soft font-bold' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                            }`}
+                        >
+                            <LayoutDashboard size={18} /> Categories
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('settings')}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition ${
+                                activeTab === 'settings' ? 'bg-accent text-white shadow-soft font-bold' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                            }`}
+                        >
+                            <Settings size={18} /> Special Engines
+                        </button>
+                    </nav>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="bg-luxury-cream rounded-lg p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-luxury-gray text-sm mb-1">Total Products</p>
-                                <p className="text-3xl font-bold text-luxury-black">{products.length}</p>
-                            </div>
-                            <Package className="text-luxury-gold" size={40} />
+                {/* Sidebar Footer Logout */}
+                <div className="p-4 border-t border-white/10">
+                    <button
+                        onClick={() => signOut()}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold text-white/70 hover:bg-red-900/30 hover:text-red-400 transition"
+                    >
+                        <LogOut size={18} /> Sign Out
+                    </button>
+                </div>
+            </aside>
+
+            {/* Main Area */}
+            <main className="flex-1 overflow-y-auto px-8 py-10">
+                {/* Header */}
+                <div className="mb-10 flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-serif font-bold text-primary mb-1">
+                            Management Portal
+                        </h1>
+                        <p className="text-xs text-text-secondary uppercase tracking-widest font-semibold">
+                            Tuhfina Control &gt; <span className="text-accent font-bold">{activeTab}</span>
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <NotificationBell />
+                        <div className="flex items-center gap-2 rounded-full border border-border bg-white px-4 py-1.5 text-xs font-semibold text-primary">
+                            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                            <span>Admin Live</span>
                         </div>
                     </div>
+                </div>
 
-                    <div className="bg-luxury-cream rounded-lg p-6">
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                    <div className="bg-white border border-border rounded-[24px] p-6 shadow-soft relative overflow-hidden">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-luxury-gray text-sm mb-1">Total Orders</p>
-                                <p className="text-3xl font-bold text-luxury-black">{orders.length}</p>
+                                <p className="text-text-secondary text-xs font-bold uppercase tracking-wider mb-1">Total Products</p>
+                                <p className="text-2xl font-bold text-primary">{products.length}</p>
                             </div>
-                            <ShoppingBag className="text-luxury-gold" size={40} />
+                            <div className="h-12 w-12 rounded-full bg-accent/10 text-accent flex items-center justify-center"><Package size={20} /></div>
                         </div>
+                        <div className="absolute bottom-0 inset-x-0 h-1.5 bg-accent/20" />
                     </div>
 
-                    <div className="bg-luxury-cream rounded-lg p-6">
+                    <div className="bg-white border border-border rounded-[24px] p-6 shadow-soft relative overflow-hidden">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-luxury-gray text-sm mb-1">Pending Orders</p>
-                                <p className="text-3xl font-bold text-luxury-black">
+                                <p className="text-text-secondary text-xs font-bold uppercase tracking-wider mb-1">Total Orders</p>
+                                <p className="text-2xl font-bold text-primary">{orders.length}</p>
+                            </div>
+                            <div className="h-12 w-12 rounded-full bg-[#d4af37]/10 text-[#d4af37] flex items-center justify-center"><ShoppingBag size={20} /></div>
+                        </div>
+                        <div className="absolute bottom-0 inset-x-0 h-1.5 bg-[#d4af37]/20" />
+                    </div>
+
+                    <div className="bg-white border border-border rounded-[24px] p-6 shadow-soft relative overflow-hidden">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-text-secondary text-xs font-bold uppercase tracking-wider mb-1">Pending Orders</p>
+                                <p className="text-2xl font-bold text-red-600">
                                     {orders.filter((o) => o.status === 'pending').length}
                                 </p>
                             </div>
-                            <AlertCircle className="text-luxury-gold" size={40} />
+                            <div className="h-12 w-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center"><AlertCircle size={20} /></div>
                         </div>
+                        <div className="absolute bottom-0 inset-x-0 h-1.5 bg-red-600/20" />
+                    </div>
+
+                    <div className="bg-white border border-border rounded-[24px] p-6 shadow-soft relative overflow-hidden">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-text-secondary text-xs font-bold uppercase tracking-wider mb-1">Paid Revenue</p>
+                                <p className="text-2xl font-bold text-green-600">₹{totalRevenue.toLocaleString()}</p>
+                            </div>
+                            <div className="h-12 w-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center"><DollarSign size={20} /></div>
+                        </div>
+                        <div className="absolute bottom-0 inset-x-0 h-1.5 bg-green-600/20" />
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex space-x-4 mb-8 border-b border-gray-200">
-                    <button
-                        onClick={() => setActiveTab('products')}
-                        className={`pb-4 px-6 font-semibold transition-colors ${activeTab === 'products'
-                            ? 'text-luxury-gold border-b-2 border-luxury-gold'
-                            : 'text-luxury-gray hover:text-luxury-gold'
-                            }`}
-                    >
-                        Products
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('orders')}
-                        className={`pb-4 px-6 font-semibold transition-colors ${activeTab === 'orders'
-                            ? 'text-luxury-gold border-b-2 border-luxury-gold'
-                            : 'text-luxury-gray hover:text-luxury-gold'
-                            }`}
-                    >
-                        Orders
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('categories')}
-                        className={`pb-4 px-6 font-semibold transition-colors ${activeTab === 'categories'
-                            ? 'text-luxury-gold border-b-2 border-luxury-gold'
-                            : 'text-luxury-gray hover:text-luxury-gold'
-                            }`}
-                    >
-                        Categories
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('settings')}
-                        className={`pb-4 px-6 font-semibold transition-colors ${activeTab === 'settings'
-                            ? 'text-luxury-gold border-b-2 border-luxury-gold'
-                            : 'text-luxury-gray hover:text-luxury-gold'
-                            }`}
-                    >
-                        Settings & Offers
-                    </button>
-                </div>
-
-                {/* Products Tab */}
+                {/* Products Tab Content */}
                 {activeTab === 'products' && (
                     <div>
-                        <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-2xl font-serif font-bold">Products</h2>
-                            <div className="flex items-center space-x-4">
-                                <label className={`btn-outline-luxury flex items-center space-x-2 cursor-pointer ${csvProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
-                                    <Upload size={20} />
-                                    <span>{csvProcessing ? `Importing (${csvProgress.current}/${csvProgress.total})` : 'Bulk Import CSV'}</span>
+                        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-8">
+                            <h2 className="text-xl font-serif font-bold text-primary">Catalog Directory</h2>
+                            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                                <label className={`btn-outline-luxury flex items-center gap-2 cursor-pointer text-xs font-semibold py-2 px-4 rounded-full ${csvProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    <FileSpreadsheet size={16} />
+                                    <span>{csvProcessing ? `Importing (${csvProgress.current}/${csvProgress.total})` : 'Import CSV'}</span>
                                     <input
                                         type="file"
                                         accept=".csv"
@@ -494,35 +619,35 @@ export default function AdminDashboard() {
                                         disabled={csvProcessing}
                                     />
                                 </label>
-                                <button
+                                <Button
                                     onClick={() => {
                                         setEditingProduct(null);
                                         setFormData({
                                             title: '',
                                             description: '',
                                             price: '',
-                                            category: CATEGORIES[0],
+                                            category: ALL_ADMIN_CATEGORIES[0],
                                             isCustomizable: false,
                                         });
                                         setImagePreviews([]);
                                         setImageFiles([]);
                                         setShowProductModal(true);
                                     }}
-                                    className="btn-luxury flex items-center space-x-2"
+                                    variant="luxury"
+                                    className="flex items-center gap-1.5 py-2 px-4 rounded-full"
                                 >
-                                    <Plus size={20} />
-                                    <span>Add Product</span>
-                                </button>
+                                    <Plus size={16} /> Add Product
+                                </Button>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {products.map((product) => (
                                 <div
                                     key={product.id}
-                                    className="bg-white border border-gray-200 rounded-lg overflow-hidden card-hover"
+                                    className="bg-white border border-border rounded-2xl overflow-hidden shadow-soft flex flex-col justify-between"
                                 >
-                                    <div className="relative h-48 bg-gray-100">
+                                    <div className="relative h-44 w-full bg-luxury-gray/10">
                                         {product.images && product.images.length > 0 ? (
                                             <Image
                                                 src={product.images[0]}
@@ -531,43 +656,44 @@ export default function AdminDashboard() {
                                                 className="object-cover"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-6xl">
+                                            <div className="w-full h-full flex items-center justify-center text-5xl">
                                                 🎁
                                             </div>
                                         )}
                                     </div>
-                                    <div className="p-5">
-                                        <h3 className="font-serif font-semibold text-lg mb-2 line-clamp-1">
-                                            {product.title}
-                                        </h3>
-                                        <p className="text-sm text-luxury-gray mb-3 line-clamp-2">
-                                            {product.description}
-                                        </p>
-                                        <div className="flex items-center justify-between mb-4">
-                                            <span className="text-xl font-bold text-luxury-gold">
-                                                ₹{product.price}
-                                            </span>
-                                            {product.isCustomizable && (
-                                                <span className="text-xs bg-luxury-gold text-white px-2 py-1 rounded">
-                                                    Customizable
-                                                </span>
-                                            )}
+                                    <div className="p-5 flex-1 flex flex-col justify-between">
+                                        <div>
+                                            <p className="text-[10px] font-bold text-accent uppercase tracking-wider mb-1">{product.category}</p>
+                                            <h3 className="font-serif font-bold text-base text-primary mb-2 line-clamp-1">
+                                                {product.title}
+                                            </h3>
+                                            <p className="text-xs text-text-secondary mb-4 line-clamp-2 leading-relaxed">
+                                                {product.description}
+                                            </p>
                                         </div>
-                                        <div className="flex space-x-2">
-                                            <button
-                                                onClick={() => handleEditProduct(product)}
-                                                className="flex-1 flex items-center justify-center space-x-1 px-4 py-2 bg-luxury-cream text-luxury-gold rounded hover:bg-luxury-gold hover:text-white transition-colors"
-                                            >
-                                                <Edit size={16} />
-                                                <span>Edit</span>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteProduct(product.id)}
-                                                className="flex-1 flex items-center justify-center space-x-1 px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-600 hover:text-white transition-colors"
-                                            >
-                                                <Trash2 size={16} />
-                                                <span>Delete</span>
-                                            </button>
+                                        <div>
+                                            <div className="flex items-center justify-between mb-4 pt-4 border-t border-border">
+                                                <span className="text-lg font-bold text-primary">₹{product.price}</span>
+                                                {product.isCustomizable && (
+                                                    <span className="text-[9px] font-bold tracking-wider uppercase bg-accent/15 text-accent px-2 py-0.5 rounded-full">
+                                                        Customizable
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleEditProduct(product)}
+                                                    className="flex-1 flex items-center justify-center gap-1 py-2 px-3 bg-luxury-warm/80 border border-accent/20 text-accent rounded-xl hover:bg-accent hover:text-white transition duration-200 text-xs font-semibold"
+                                                >
+                                                    <Edit size={14} /> Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteProduct(product.id)}
+                                                    className="flex-1 flex items-center justify-center gap-1 py-2 px-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition duration-200 text-xs font-semibold"
+                                                >
+                                                    <Trash2 size={14} /> Delete
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -576,44 +702,41 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* Orders Tab */}
+                {/* Orders Tab Content */}
                 {activeTab === 'orders' && (
                     <div>
-                        <h2 className="text-2xl font-serif font-bold mb-8">Orders</h2>
+                        <h2 className="text-xl font-serif font-bold text-primary mb-6">Orders Inboxes</h2>
 
                         {orders.length === 0 ? (
-                            <div className="text-center py-20 bg-luxury-cream rounded-lg">
-                                <p className="text-luxury-gray">No orders yet</p>
+                            <div className="text-center py-16 bg-surface border border-dashed border-border rounded-2xl p-8">
+                                <p className="text-text-secondary font-serif">No customer orders recorded yet.</p>
                             </div>
                         ) : (
                             <div className="space-y-6">
                                 {orders.map((order) => (
                                     <div
                                         key={order.id}
-                                        className="bg-white border border-gray-200 rounded-lg p-6"
+                                        className="bg-white border border-border rounded-2xl p-6 shadow-soft"
                                     >
-                                        <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-6">
+                                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 border-b border-border pb-5 mb-5">
                                             <div>
-                                                <p className="text-sm text-luxury-gray mb-1">
-                                                    Order ID: <span className="font-mono">{order.id}</span>
-                                                </p>
-                                                <p className="text-sm text-luxury-gray mb-1">
-                                                    Customer: {order.userEmail}
-                                                </p>
-                                                <p className="text-sm text-luxury-gray">
-                                                    Date: {order.createdAt.toLocaleDateString()}
+                                                <p className="text-xs font-bold text-accent uppercase tracking-wider mb-1">Order Summary</p>
+                                                <h3 className="font-mono text-sm text-primary font-bold">{order.id}</h3>
+                                                <p className="text-xs text-text-secondary mt-1">
+                                                    Email: {order.userEmail} | Date: {new Date(order.createdAt).toLocaleDateString()}
                                                 </p>
                                             </div>
-                                            <div className="mt-4 md:mt-0">
-                                                <p className="text-2xl font-bold text-luxury-gold mb-2">
-                                                    ₹{order.totalAmount}
-                                                </p>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">Total Value</p>
+                                                    <p className="text-xl font-bold text-[#d4af37]">₹{order.totalAmount}</p>
+                                                </div>
                                                 <select
                                                     value={order.status}
                                                     onChange={(e) =>
                                                         handleUpdateOrderStatus(order.id, e.target.value as Order['status'])
                                                     }
-                                                    className="input-luxury text-sm"
+                                                    className="bg-surface border border-border rounded-full text-xs font-bold px-4 py-2 outline-none focus:border-accent"
                                                 >
                                                     <option value="pending">Pending</option>
                                                     <option value="CONFIRMED">Confirmed</option>
@@ -625,64 +748,70 @@ export default function AdminDashboard() {
                                             </div>
                                         </div>
 
-                                        <div className="border-t border-gray-200 pt-4">
-                                            <h4 className="font-semibold mb-3">Order Items:</h4>
-                                            <div className="space-y-2">
-                                                {orders.length > 0 && order.items.map((item, index) => (
-                                                    <div key={index} className="flex justify-between text-sm">
-                                                        <span>
-                                                            {item.title} × {item.quantity}
-                                                            {item.customization && (
-                                                                <span className="text-luxury-gold ml-2">✨ Customized</span>
-                                                            )}
-                                                        </span>
-                                                        <span className="font-semibold">₹{item.price * item.quantity}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {order.shippingAddress && (
-                                            <div className="border-t border-gray-200 pt-4 mt-4">
-                                                <h4 className="font-semibold mb-2">Shipping Address:</h4>
-                                                <p className="text-sm text-luxury-gray">
-                                                    {order.shippingAddress.name}
-                                                    <br />
-                                                    {order.shippingAddress.address}
-                                                    <br />
-                                                    {order.shippingAddress.city}, {order.shippingAddress.state} -{' '}
-                                                    {order.shippingAddress.pincode}
-                                                    <br />
-                                                    Phone: {order.shippingAddress.phone}
-                                                </p>
-                                            </div>
-                                        )}
-                                        <div className="border-t border-gray-200 pt-4 mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="grid md:grid-cols-3 gap-6">
                                             <div>
-                                                <h4 className="font-semibold mb-2 text-sm text-gray-500">Payment Status</h4>
-                                                <p className={`font-bold ${order.paymentStatus === 'PAID' ? 'text-green-600' : 'text-yellow-600'}`}>
-                                                    {order.paymentStatus || 'PENDING'}
-                                                </p>
+                                                <h4 className="font-bold text-xs uppercase tracking-wider text-text-secondary mb-3">Purchased Items</h4>
+                                                <div className="space-y-2">
+                                                    {order.items.map((item, index) => (
+                                                        <div key={index} className="flex justify-between text-xs border-b border-border/40 pb-2">
+                                                            <span className="font-medium text-primary">
+                                                                {item.title} <span className="text-text-secondary">× {item.quantity}</span>
+                                                                {item.customization && (
+                                                                    <span className="block text-[10px] font-bold text-accent">✨ Customized</span>
+                                                                )}
+                                                            </span>
+                                                            <span className="font-bold text-primary">₹{item.price * item.quantity}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            {order.razorpayPaymentId && (
-                                                <div>
-                                                    <h4 className="font-semibold mb-2 text-sm text-gray-500">Payment ID</h4>
-                                                    <p className="font-mono text-sm">{order.razorpayPaymentId}</p>
+
+                                            <div>
+                                                <h4 className="font-bold text-xs uppercase tracking-wider text-text-secondary mb-3">Shipping Address</h4>
+                                                {order.shippingAddress ? (
+                                                    <p className="text-xs text-text-secondary leading-relaxed">
+                                                        <strong className="text-primary">{order.shippingAddress.name}</strong>
+                                                        <br />
+                                                        {order.shippingAddress.address}
+                                                        <br />
+                                                        {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.pincode}
+                                                        <br />
+                                                        Phone: {order.shippingAddress.phone}
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-xs text-text-secondary italic">No address provided</p>
+                                                )}
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-bold text-xs uppercase tracking-wider text-text-secondary mb-3">Payments</h4>
+                                                <div className="space-y-1">
+                                                    <div className="flex justify-between text-xs">
+                                                        <span>Status:</span>
+                                                        <span className={`font-bold ${order.paymentStatus === 'PAID' ? 'text-green-600' : 'text-yellow-600'}`}>
+                                                            {order.paymentStatus || 'PENDING'}
+                                                        </span>
+                                                    </div>
+                                                    {order.razorpayPaymentId && (
+                                                        <div className="flex justify-between text-xs">
+                                                            <span>Payment ID:</span>
+                                                            <span className="font-mono text-primary">{order.razorpayPaymentId}</span>
+                                                        </div>
+                                                    )}
+                                                    {order.invoiceUrl && (
+                                                        <div className="pt-2">
+                                                            <a
+                                                                href={order.invoiceUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-accent hover:underline text-xs font-bold flex items-center gap-1"
+                                                            >
+                                                                Download PDF Invoice
+                                                            </a>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            )}
-                                            {order.invoiceUrl && (
-                                                <div>
-                                                    <h4 className="font-semibold mb-2 text-sm text-gray-500">Invoice</h4>
-                                                    <a
-                                                        href={order.invoiceUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-luxury-gold hover:underline text-sm font-semibold flex items-center"
-                                                    >
-                                                        Download PDF
-                                                    </a>
-                                                </div>
-                                            )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -691,16 +820,16 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* Categories Tab */}
+                {/* Categories Tab Content */}
                 {activeTab === 'categories' && (
                     <div>
-                        <h2 className="text-2xl font-serif font-bold mb-8">Manage Category Images</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {CATEGORIES.map((catName) => {
-                                const dbCat = dbCategories.find(c => c.name === catName);
+                        <h2 className="text-xl font-serif font-bold text-primary mb-6">Category Media Management</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {ALL_ADMIN_CATEGORIES.map((catName) => {
+                                const dbCat = dbCategories.find(c => c.name.toLowerCase() === catName.toLowerCase());
                                 return (
-                                    <div key={catName} className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col items-center">
-                                        <div className="relative h-40 w-full mb-4 bg-luxury-cream rounded-md overflow-hidden flex items-center justify-center">
+                                    <div key={catName} className="bg-white border border-border rounded-2xl p-6 flex flex-col items-center shadow-soft">
+                                        <div className="relative h-32 w-full mb-4 bg-luxury-gray/10 rounded-xl overflow-hidden flex items-center justify-center">
                                             {dbCat?.image ? (
                                                 <img src={dbCat.image} alt={catName} className="w-full h-full object-cover" />
                                             ) : (
@@ -709,13 +838,13 @@ export default function AdminDashboard() {
                                                         catName.includes('Earring') ? '💎' :
                                                             catName.includes('Frame') ? '🖼️' :
                                                                 catName.includes('Keychain') ? '🔑' :
-                                                                    catName.includes('Diwali') ? '🪔' : '🎁'}
+                                                                    catName.includes('Diya') ? '🪔' : '🎁'}
                                                 </span>
                                             )}
                                         </div>
-                                        <h3 className="font-serif font-semibold text-lg mb-4">{catName}</h3>
-                                        <label className="btn-outline-luxury text-sm cursor-pointer w-full text-center">
-                                            <span>Update Image</span>
+                                        <h3 className="font-serif font-bold text-base text-primary mb-4">{catName}</h3>
+                                        <label className="btn-outline-luxury text-xs py-2 px-4 rounded-full cursor-pointer w-full text-center">
+                                            <span>Update Thumbnail</span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -730,24 +859,24 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* Settings & Festival Engine Tab */}
+                {/* Settings & Special Offers Tab Content */}
                 {activeTab === 'settings' && (
-                    <div className="max-w-6xl space-y-12">
-                        {/* 1. Global Festival Control */}
-                        <section className="bg-white border border-luxury-gold/20 rounded-xl overflow-hidden shadow-sm">
-                            <div className="bg-luxury-gold/5 p-6 border-b border-luxury-gold/10">
-                                <h3 className="text-xl font-serif font-bold text-luxury-black flex items-center">
-                                    <Sparkles className="text-luxury-gold mr-3" size={24} />
+                    <div className="space-y-12">
+                        {/* Master Festival Engine */}
+                        <section className="bg-white border border-border rounded-[28px] overflow-hidden shadow-soft">
+                            <div className="bg-primary/5 p-6 border-b border-border">
+                                <h3 className="text-lg font-serif font-bold text-primary flex items-center">
+                                    <Sparkles className="text-accent mr-3" size={20} />
                                     Master Festival Control
                                 </h3>
                             </div>
                             <div className="p-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="space-y-6">
-                                        <div className="flex items-center justify-between p-4 bg-luxury-cream rounded-lg">
+                                        <div className="flex items-center justify-between p-4 bg-luxury-warm/50 rounded-2xl border border-accent/25">
                                             <div>
-                                                <p className="font-bold text-luxury-black">Global Sale Status</p>
-                                                <p className="text-sm text-luxury-gray">Master switch for all festival UI</p>
+                                                <p className="font-bold text-primary text-sm">Global Sale Status</p>
+                                                <p className="text-xs text-text-secondary mt-0.5">Master toggle switch for festival banners</p>
                                             </div>
                                             <button
                                                 onClick={async () => {
@@ -757,32 +886,34 @@ export default function AdminDashboard() {
                                                         headers: { 'Content-Type': 'application/json' },
                                                         body: JSON.stringify({ active: newValue })
                                                     });
-                                                    if (res.ok) loadData();
+                                                    if (res.ok) {
+                                                        toast(`Sale ${newValue ? 'activated' : 'deactivated'}!`, 'success');
+                                                        loadData();
+                                                    }
                                                 }}
-                                                className={`px-6 py-2 rounded-full font-bold transition-all ${festivalForm.active
-                                                    ? 'bg-red-500 text-white hover:bg-red-600'
-                                                    : 'bg-green-600 text-white hover:bg-green-700'
-                                                    }`}
+                                                className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition ${
+                                                    festivalForm.active ? 'bg-red-500 text-white' : 'bg-green-600 text-white'
+                                                }`}
                                             >
-                                                {festivalForm.active ? 'Deactivate Sale' : 'Activate Sale'}
+                                                {festivalForm.active ? 'Deactivate' : 'Activate'}
                                             </button>
                                         </div>
 
                                         <div className="space-y-4">
                                             <div>
-                                                <label className="block text-sm font-bold mb-2">Banner Title</label>
+                                                <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Banner Main Title</label>
                                                 <input
                                                     type="text"
-                                                    className="input-luxury"
+                                                    className="input-luxury text-sm"
                                                     value={festivalForm.bannerText}
                                                     onChange={e => setFestivalForm({ ...festivalForm, bannerText: e.target.value })}
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-bold mb-2">Banner Subtext</label>
+                                                <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Banner Subtext</label>
                                                 <input
                                                     type="text"
-                                                    className="input-luxury"
+                                                    className="input-luxury text-sm"
                                                     value={festivalForm.bannerSubtext}
                                                     onChange={e => setFestivalForm({ ...festivalForm, bannerSubtext: e.target.value })}
                                                 />
@@ -793,431 +924,394 @@ export default function AdminDashboard() {
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-sm font-bold mb-2">Start Date & Time</label>
+                                                <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Start Time</label>
                                                 <input
                                                     type="datetime-local"
-                                                    className="input-luxury"
+                                                    className="input-luxury text-sm"
                                                     value={new Date(festivalForm.startAt).toISOString().slice(0, 16)}
                                                     onChange={e => setFestivalForm({ ...festivalForm, startAt: new Date(e.target.value) })}
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-bold mb-2">End Date & Time</label>
+                                                <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">End Time</label>
                                                 <input
                                                     type="datetime-local"
-                                                    className="input-luxury"
+                                                    className="input-luxury text-sm"
                                                     value={new Date(festivalForm.endAt).toISOString().slice(0, 16)}
                                                     onChange={e => setFestivalForm({ ...festivalForm, endAt: new Date(e.target.value) })}
                                                 />
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={async () => {
-                                                const res = await fetch('/api/festival-config', {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify(festivalForm)
-                                                });
-                                                if (res.ok) alert('Global Config Saved');
-                                            }}
-                                            className="w-full btn-luxury"
+                                        <Button
+                                            onClick={handleFestivalConfigUpdate}
+                                            variant="luxury"
+                                            className="w-full text-xs font-bold uppercase tracking-wider"
                                         >
-                                            Update Global Config
-                                        </button>
+                                            Update Festival Settings
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
                         </section>
 
-                        {/* 2. Category Offers */}
+                        {/* Category-wide Offers */}
                         <section className="space-y-6">
-                            <h3 className="text-2xl font-serif font-bold text-luxury-black flex items-center">
-                                <Tag className="text-luxury-gold mr-3" size={28} />
-                                Category-wide Offers
+                            <h3 className="text-xl font-serif font-bold text-primary flex items-center">
+                                <Tag className="text-accent mr-3" size={24} />
+                                Category-wide Discounts
                             </h3>
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 {/* Form */}
-                                <div className="bg-luxury-cream p-8 rounded-xl space-y-6">
-                                    <h4 className="font-bold border-b border-luxury-gold/20 pb-2">Set New Category Offer</h4>
+                                <div className="bg-luxury-warm/40 border border-accent/20 p-8 rounded-2xl space-y-6">
+                                    <h4 className="font-serif font-bold text-primary text-base border-b border-border pb-2">Set New Category Offer</h4>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="col-span-2">
-                                            <label className="block text-sm font-bold mb-2">Select Category</label>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Target Category</label>
                                             <select
-                                                className="input-luxury"
+                                                className="bg-white border border-border rounded-full text-sm font-semibold px-4 py-2 w-full outline-none focus:border-accent"
                                                 value={categoryOfferForm.category}
                                                 onChange={e => setCategoryOfferForm({ ...categoryOfferForm, category: e.target.value })}
                                             >
-                                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                                {ALL_ADMIN_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold mb-2">Discount %</label>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Discount Percent (%)</label>
                                             <input
                                                 type="number"
-                                                className="input-luxury"
+                                                className="input-luxury text-sm"
                                                 value={categoryOfferForm.discountPercent}
                                                 onChange={e => setCategoryOfferForm({ ...categoryOfferForm, discountPercent: Number(e.target.value), fixedPrice: 0 })}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold mb-2">OR Fixed Price (₹)</label>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">OR Fixed Price (₹)</label>
                                             <input
                                                 type="number"
-                                                className="input-luxury"
+                                                className="input-luxury text-sm"
                                                 value={categoryOfferForm.fixedPrice}
                                                 onChange={e => setCategoryOfferForm({ ...categoryOfferForm, fixedPrice: Number(e.target.value), discountPercent: 0 })}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold mb-2">Start At</label>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Start Time</label>
                                             <input
                                                 type="datetime-local"
-                                                className="input-luxury"
+                                                className="input-luxury text-sm"
                                                 value={new Date(categoryOfferForm.startAt).toISOString().slice(0, 16)}
                                                 onChange={e => setCategoryOfferForm({ ...categoryOfferForm, startAt: new Date(e.target.value) })}
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold mb-2">End At</label>
+                                            <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">End Time</label>
                                             <input
                                                 type="datetime-local"
-                                                className="input-luxury"
+                                                className="input-luxury text-sm"
                                                 value={new Date(categoryOfferForm.endAt).toISOString().slice(0, 16)}
                                                 onChange={e => setCategoryOfferForm({ ...categoryOfferForm, endAt: new Date(e.target.value) })}
                                             />
                                         </div>
-                                        <div className="col-span-2 flex items-center space-x-4">
+                                        <div className="col-span-2 flex items-center justify-between gap-4">
                                             <label className="flex items-center space-x-2 cursor-pointer">
                                                 <input
                                                     type="checkbox"
                                                     checked={categoryOfferForm.isFlash}
                                                     onChange={e => setCategoryOfferForm({ ...categoryOfferForm, isFlash: e.target.checked })}
-                                                    className="w-5 h-5 accent-luxury-gold"
+                                                    className="w-5 h-5 accent-accent"
                                                 />
-                                                <span className="font-bold flex items-center">
-                                                    <Clock size={16} className="mr-1" /> Is Flash Sale?
+                                                <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                                                    Is Flash Sale?
                                                 </span>
                                             </label>
                                             <input
                                                 type="text"
-                                                placeholder="Offer Label (e.g. Diwali Sale)"
-                                                className="input-luxury flex-1"
+                                                placeholder="Offer Title (e.g. Diwali Deal)"
+                                                className="input-luxury text-sm flex-1 max-w-[200px]"
                                                 value={categoryOfferForm.label || ''}
                                                 onChange={e => setCategoryOfferForm({ ...categoryOfferForm, label: e.target.value })}
                                             />
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={async () => {
-                                            const res = await fetch('/api/category-offers', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify(categoryOfferForm)
-                                            });
-                                            if (res.ok) {
-                                                alert('Category Offer Saved');
-                                                loadData();
-                                            }
-                                        }}
-                                        className="w-full btn-luxury"
+                                    <Button
+                                        onClick={handleCategoryOfferSave}
+                                        variant="luxury"
+                                        className="w-full text-xs font-bold uppercase tracking-wider"
                                     >
                                         Save Category Offer
-                                    </button>
+                                    </Button>
                                 </div>
 
-                                {/* List */}
+                                {/* Active Offers List */}
                                 <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
                                     {categoryOffers.map(offer => (
-                                        <div key={offer._id} className="bg-white border border-gray-200 p-4 rounded-lg flex justify-between items-center shadow-sm">
+                                        <div key={offer._id} className="bg-white border border-border p-5 rounded-2xl flex justify-between items-center shadow-soft">
                                             <div>
-                                                <p className="font-bold text-luxury-black">{offer.category}</p>
-                                                <p className="text-sm text-luxury-gold font-semibold">
-                                                    {offer.discountPercent ? `${offer.discountPercent}% OFF` : `Fixed ₹${offer.fixedPrice}`}
-                                                    {offer.isFlash && <span className="ml-2 uppercase text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded">Flash</span>}
+                                                <p className="font-serif font-bold text-primary text-base">{offer.category}</p>
+                                                <p className="text-xs text-[#d4af37] font-bold mt-1 uppercase tracking-wider">
+                                                    {offer.discountPercent ? `${offer.discountPercent}% OFF` : `Fixed Price: ₹${offer.fixedPrice}`}
+                                                    {offer.isFlash && <span className="ml-2 bg-red-100 text-red-600 text-[9px] px-2 py-0.5 rounded-full">Flash</span>}
                                                 </p>
-                                                <p className="text-[11px] text-luxury-gray">
-                                                    {new Date(offer.startAt).toLocaleString()} - {new Date(offer.endAt).toLocaleString()}
+                                                <p className="text-[10px] text-text-secondary mt-1 font-mono">
+                                                    Ends At: {new Date(offer.endAt).toLocaleString()}
                                                 </p>
                                             </div>
                                             <button
-                                                onClick={async () => {
-                                                    if (confirm('Delete this offer?')) {
-                                                        await fetch(`/api/category-offers?id=${offer._id}`, { method: 'DELETE' });
-                                                        loadData();
-                                                    }
-                                                }}
-                                                className="text-red-400 hover:text-red-600 p-2"
+                                                onClick={() => handleCategoryOfferDelete(offer._id!)}
+                                                className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition"
                                             >
-                                                <Trash2 size={20} />
+                                                <Trash2 size={18} />
                                             </button>
                                         </div>
                                     ))}
-                                    {categoryOffers.length === 0 && <p className="text-center text-luxury-gray py-10 italic">No category offers active.</p>}
+                                    {categoryOffers.length === 0 && <p className="text-center text-text-secondary py-16 italic text-sm">No category offers active.</p>}
                                 </div>
                             </div>
                         </section>
                     </div>
                 )}
-            </div>
+            </main>
 
-            {/* Product Modal */}
-            {showProductModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="p-8">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-2xl font-serif font-bold">
-                                    {editingProduct ? 'Edit Product' : 'Add New Product'}
-                                </h2>
-                                <button
-                                    onClick={() => setShowProductModal(false)}
-                                    className="text-luxury-gray hover:text-luxury-gold"
-                                >
-                                    <X size={24} />
-                                </button>
-                            </div>
+            {/* Accessible Product Modal using the new Dialog component */}
+            <Dialog open={showProductModal} onOpenChange={setShowProductModal}>
+                <DialogHeader onClose={() => setShowProductModal(false)}>
+                    <DialogTitle>{editingProduct ? 'Edit Product Attributes' : 'Create Product Listing'}</DialogTitle>
+                    <DialogDescription>Fill out all required details of the jewellery product below.</DialogDescription>
+                </DialogHeader>
 
-                            <form onSubmit={handleProductSubmit} className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">Title *</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={formData.title}
-                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                        className="input-luxury"
-                                    />
-                                </div>
+                <form onSubmit={handleProductSubmit} className="space-y-5">
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Title *</label>
+                        <input
+                            type="text"
+                            required
+                            value={formData.title}
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            className="input-luxury"
+                        />
+                    </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">Description *</label>
-                                    <textarea
-                                        required
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        className="input-luxury"
-                                        rows={4}
-                                    />
-                                </div>
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Description *</label>
+                        <textarea
+                            required
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            className="input-luxury rounded-2xl"
+                            rows={3}
+                        />
+                    </div>
 
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">Price (₹) *</label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="0"
-                                            step="0.01"
-                                            value={formData.price}
-                                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                                            className="input-luxury"
-                                        />
-                                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Price (₹) *</label>
+                            <input
+                                type="number"
+                                required
+                                min="0"
+                                step="0.01"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                className="input-luxury"
+                            />
+                        </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">Category *</label>
-                                        <select
-                                            value={formData.category}
-                                            onChange={(e) => setFormData({ ...formData, category: e.target.value as typeof CATEGORIES[number] })}
-                                            className="input-luxury"
-                                        >
-                                            {CATEGORIES.map((cat) => (
-                                                <option key={cat} value={cat}>
-                                                    {cat}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4 p-4 bg-luxury-cream rounded-lg">
-                                    <div className="flex items-center space-x-3">
-                                        <input
-                                            type="checkbox"
-                                            id="festivalActive"
-                                            checked={!!formData.festivalOffer}
-                                            onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    setFormData({
-                                                        ...formData,
-                                                        festivalOffer: {
-                                                            price: Number(formData.price) || 0,
-                                                            startAt: new Date(),
-                                                            endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-                                                            label: '',
-                                                            isFlash: false
-                                                        }
-                                                    });
-                                                } else {
-                                                    setFormData({ ...formData, festivalOffer: undefined });
-                                                }
-                                            }}
-                                            className="w-5 h-5 accent-luxury-gold"
-                                        />
-                                        <label htmlFor="festivalActive" className="text-sm font-bold flex items-center">
-                                            <Sparkles size={16} className="mr-1 text-luxury-gold" /> Enable Festival Offer
-                                        </label>
-                                    </div>
-
-                                    {formData.festivalOffer && (
-                                        <div className="grid grid-cols-2 gap-4 pl-8 border-l-2 border-luxury-gold/20">
-                                            <div>
-                                                <label className="block text-xs font-bold mb-1">Offer Price (₹)</label>
-                                                <input
-                                                    type="number"
-                                                    className="input-luxury text-sm"
-                                                    value={formData.festivalOffer.price}
-                                                    onChange={e => setFormData({
-                                                        ...formData,
-                                                        festivalOffer: { ...formData.festivalOffer!, price: Number(e.target.value) }
-                                                    })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold mb-1">Label (e.g. Flash Deal)</label>
-                                                <input
-                                                    type="text"
-                                                    className="input-luxury text-sm"
-                                                    value={formData.festivalOffer.label}
-                                                    onChange={e => setFormData({
-                                                        ...formData,
-                                                        festivalOffer: { ...formData.festivalOffer!, label: e.target.value }
-                                                    })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold mb-1">Start Time</label>
-                                                <input
-                                                    type="datetime-local"
-                                                    className="input-luxury text-sm"
-                                                    value={new Date(formData.festivalOffer.startAt).toISOString().slice(0, 16)}
-                                                    onChange={e => setFormData({
-                                                        ...formData,
-                                                        festivalOffer: { ...formData.festivalOffer!, startAt: new Date(e.target.value) }
-                                                    })}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-bold mb-1">End Time</label>
-                                                <input
-                                                    type="datetime-local"
-                                                    className="input-luxury text-sm"
-                                                    value={new Date(formData.festivalOffer.endAt).toISOString().slice(0, 16)}
-                                                    onChange={e => setFormData({
-                                                        ...formData,
-                                                        festivalOffer: { ...formData.festivalOffer!, endAt: new Date(e.target.value) }
-                                                    })}
-                                                />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <label className="flex items-center space-x-2 cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={formData.festivalOffer.isFlash}
-                                                        onChange={e => setFormData({
-                                                            ...formData,
-                                                            festivalOffer: { ...formData.festivalOffer!, isFlash: e.target.checked }
-                                                        })}
-                                                        className="w-4 h-4 accent-luxury-gold"
-                                                    />
-                                                    <span className="text-xs font-bold flex items-center">
-                                                        <Clock size={14} className="mr-1" /> This is a Flash Sale
-                                                    </span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex items-center space-x-3">
-                                    <input
-                                        type="checkbox"
-                                        id="customizable"
-                                        checked={formData.isCustomizable}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, isCustomizable: e.target.checked })
-                                        }
-                                        className="w-5 h-5 accent-luxury-gold"
-                                    />
-                                    <label htmlFor="customizable" className="text-sm font-medium">
-                                        This product is customizable
-                                    </label>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        Product Images {!editingProduct && '*'}
-                                    </label>
-                                    <label className="block cursor-pointer">
-                                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-luxury-gold transition-colors">
-                                            {uploadingImages ? (
-                                                <div className="flex flex-col items-center">
-                                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-luxury-gold mb-2"></div>
-                                                    <p className="text-sm text-luxury-gray">Uploading images...</p>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <Upload className="mx-auto mb-2 text-luxury-gray" size={32} />
-                                                    <p className="text-sm text-luxury-gray">
-                                                        Click to upload images or drag and drop
-                                                    </p>
-                                                </>
-                                            )}
-                                        </div>
-                                        <input
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            onChange={handleImageChange}
-                                            className="hidden"
-                                            disabled={uploadingImages}
-                                        />
-                                    </label>
-
-                                    {imagePreviews.length > 0 && (
-                                        <div className="grid grid-cols-4 gap-4 mt-4">
-                                            {imagePreviews.map((preview, index) => (
-                                                <div key={index} className="relative h-24 rounded overflow-hidden">
-                                                    <Image
-                                                        src={preview}
-                                                        alt={`Preview ${index + 1}`}
-                                                        fill
-                                                        className="object-cover"
-                                                        onError={(e) => {
-                                                            (e.target as HTMLImageElement).src = '/placeholder.png';
-                                                        }}
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex space-x-4">
-                                    <button
-                                        type="submit"
-                                        disabled={submitting}
-                                        className="flex-1 btn-luxury disabled:opacity-50"
-                                    >
-                                        {submitting
-                                            ? 'Saving...'
-                                            : editingProduct
-                                                ? 'Update Product'
-                                                : 'Create Product'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowProductModal(false)}
-                                        className="flex-1 btn-outline-luxury"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
+                        <div>
+                            <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Category *</label>
+                            <select
+                                value={formData.category}
+                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                className="bg-white border border-border rounded-full text-sm font-semibold px-4 py-2 w-full outline-none focus:border-accent"
+                            >
+                                {ALL_ADMIN_CATEGORIES.map((cat) => (
+                                    <option key={cat} value={cat}>
+                                        {cat}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
-                </div>
-            )}
+
+                    {/* Enable Festival Offer Nested Control */}
+                    <div className="space-y-4 p-4 bg-luxury-warm/50 border border-accent/20 rounded-2xl">
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="festivalActive"
+                                checked={!!formData.festivalOffer}
+                                onChange={(e) => {
+                                    if (e.target.checked) {
+                                        setFormData({
+                                            ...formData,
+                                            festivalOffer: {
+                                                price: Number(formData.price) || 0,
+                                                startAt: new Date(),
+                                                endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                                                label: '',
+                                                isFlash: false
+                                            }
+                                        });
+                                    } else {
+                                        setFormData({ ...formData, festivalOffer: undefined });
+                                    }
+                                }}
+                                className="w-5 h-5 accent-accent"
+                            />
+                            <label htmlFor="festivalActive" className="text-xs font-bold uppercase tracking-wider text-primary flex items-center cursor-pointer">
+                                <Sparkles size={14} className="mr-1 text-[#d4af37]" /> Active Special Offer
+                            </label>
+                        </div>
+
+                        {formData.festivalOffer && (
+                            <div className="grid grid-cols-2 gap-4 pl-6 border-l-2 border-accent/30 pt-2">
+                                <div>
+                                    <label className="block text-[10px] font-bold uppercase text-text-secondary mb-1">Offer Price (₹)</label>
+                                    <input
+                                        type="number"
+                                        className="input-luxury text-sm"
+                                        value={formData.festivalOffer.price}
+                                        onChange={e => setFormData({
+                                            ...formData,
+                                            festivalOffer: { ...formData.festivalOffer!, price: Number(e.target.value) }
+                                        })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold uppercase text-text-secondary mb-1">Badge (e.g. Flash Deal)</label>
+                                    <input
+                                        type="text"
+                                        className="input-luxury text-sm"
+                                        value={formData.festivalOffer.label}
+                                        onChange={e => setFormData({
+                                            ...formData,
+                                            festivalOffer: { ...formData.festivalOffer!, label: e.target.value }
+                                        })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold uppercase text-text-secondary mb-1">Start Time</label>
+                                    <input
+                                        type="datetime-local"
+                                        className="input-luxury text-sm"
+                                        value={new Date(formData.festivalOffer.startAt).toISOString().slice(0, 16)}
+                                        onChange={e => setFormData({
+                                            ...formData,
+                                            festivalOffer: { ...formData.festivalOffer!, startAt: new Date(e.target.value) }
+                                        })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold uppercase text-text-secondary mb-1">End Time</label>
+                                    <input
+                                        type="datetime-local"
+                                        className="input-luxury text-sm"
+                                        value={new Date(formData.festivalOffer.endAt).toISOString().slice(0, 16)}
+                                        onChange={e => setFormData({
+                                            ...formData,
+                                            festivalOffer: { ...formData.festivalOffer!, endAt: new Date(e.target.value) }
+                                        })}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="flex items-center space-x-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.festivalOffer.isFlash}
+                                            onChange={e => setFormData({
+                                                ...formData,
+                                                festivalOffer: { ...formData.festivalOffer!, isFlash: e.target.checked }
+                                            })}
+                                            className="w-4 h-4 accent-accent"
+                                        />
+                                        <span className="text-[10px] font-bold uppercase text-text-secondary">
+                                            Is a countdown flash sale
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            id="customizable"
+                            checked={formData.isCustomizable}
+                            onChange={(e) =>
+                                setFormData({ ...formData, isCustomizable: e.target.checked })
+                            }
+                            className="w-5 h-5 accent-accent"
+                        />
+                        <label htmlFor="customizable" className="text-xs font-bold uppercase tracking-wider text-text-secondary cursor-pointer">
+                            Enable customized ordering option
+                        </label>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">
+                            Product Images {!editingProduct && '*'}
+                        </label>
+                        <label className="block cursor-pointer">
+                            <div className="border-2 border-dashed border-border bg-surface rounded-2xl p-6 text-center hover:border-accent transition-colors">
+                                {uploadingImages ? (
+                                    <div className="flex flex-col items-center">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mb-2"></div>
+                                        <p className="text-xs text-text-secondary">Uploading media files...</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Upload className="mx-auto mb-2 text-text-secondary" size={24} />
+                                        <p className="text-xs text-text-secondary">
+                                            Upload product catalog images
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                className="hidden"
+                                disabled={uploadingImages}
+                            />
+                        </label>
+
+                        {imagePreviews.length > 0 && (
+                            <div className="grid grid-cols-4 gap-4 mt-4">
+                                {imagePreviews.map((preview, index) => (
+                                    <div key={index} className="relative h-20 rounded-xl overflow-hidden border border-border">
+                                        <Image
+                                            src={preview}
+                                            alt={`Preview ${index + 1}`}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            onClick={() => setShowProductModal(false)}
+                            variant="outline-luxury"
+                            className="py-2.5"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={submitting}
+                            variant="luxury"
+                            className="py-2.5"
+                        >
+                            {submitting ? 'Saving changes...' : editingProduct ? 'Save Changes' : 'Create Listing'}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </Dialog>
         </div>
     );
 }

@@ -16,6 +16,14 @@ const CategorySchema = new Schema(
             type: String,
             required: false,
         },
+        department: {
+            type: String,
+            default: 'General',
+        },
+        parentCategory: {
+            type: String,
+            required: false,
+        },
     },
     {
         timestamps: true,

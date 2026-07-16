@@ -1,32 +1,64 @@
 'use client';
 
-import { Suspense, useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
+import { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Product, CATEGORIES, CategoryOffer, FestivalConfig } from '@/lib/types';
 import { productService } from '@/lib/services/productService';
-import { ShoppingCart, Heart, Sparkles, Clock } from 'lucide-react';
 import { resolveProductPrice } from '@/lib/saleUtils';
-import CountdownTimer from '@/components/CountdownTimer';
+import ProductCard from '@/components/cards/ProductCard';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { SlidersHorizontal, ArrowUpDown, Grid, List, CheckCircle, RotateCcw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const jewelleryCollections = [
+    'Rings',
+    'Earrings',
+    'Necklaces',
+    'Bracelets',
+    'Mangalsutra',
+    'Wedding Collection',
+];
+
+// Combine standard categories and jewellery categories for filtering
+const ALL_FILTER_CATEGORIES = [
+    'all',
+    ...CATEGORIES,
+    ...jewelleryCollections
+];
 
 function ShopContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const categoryParam = searchParams.get('category');
 
     const [products, setProducts] = useState<Product[]>([]);
     const [categoryOffers, setCategoryOffers] = useState<CategoryOffer[]>([]);
     const [festivalConfig, setFestivalConfig] = useState<FestivalConfig | null>(null);
     const [loading, setLoading] = useState(true);
+    
+    // Filters State
     const [selectedCategory, setSelectedCategory] = useState<string>(categoryParam || 'all');
+    const [sortBy, setSortBy] = useState<string>('newest'); // newest, price-asc, price-desc
+    const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 25000 });
+    const [tempPriceMax, setTempPriceMax] = useState<number>(25000);
+    const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+
+    // Sync query parameter with state
+    useEffect(() => {
+        if (categoryParam) {
+            setSelectedCategory(categoryParam);
+        } else {
+            setSelectedCategory('all');
+        }
+    }, [categoryParam]);
 
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
+            // Always load all products and filter locally for advanced filters (sorting, price range, etc.)
             const [fetchedProducts, categoryOffersData, festivalConfigData] = await Promise.all([
-                selectedCategory === 'all'
-                    ? productService.getAllProducts()
-                    : productService.getProductsByCategory(selectedCategory),
+                productService.getAllProducts(),
                 fetch('/api/category-offers').then(res => res.json()),
                 fetch('/api/festival-config').then(res => res.json()),
             ]);
@@ -38,164 +70,308 @@ function ShopContent() {
         } finally {
             setLoading(false);
         }
-    }, [selectedCategory]);
+    }, []);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
+    const handleCategorySelect = (category: string) => {
+        setSelectedCategory(category);
+        if (category === 'all') {
+            router.push('/shop');
+        } else {
+            router.push(`/shop?category=${encodeURIComponent(category)}`);
+        }
+    };
+
+    // Filter and Sort Logic
+    const processedProducts = useMemo(() => {
+        let items = [...products];
+
+        // 1. Category Filter
+        if (selectedCategory !== 'all') {
+            items = items.filter(p => p.category.toLowerCase() === selectedCategory.toLowerCase());
+        }
+
+        // 2. Price Range Filter (using resolved prices)
+        items = items.filter(p => {
+            const status = resolveProductPrice(p, categoryOffers, festivalConfig);
+            const currentPrice = status.currentPrice;
+            return currentPrice >= priceRange.min && currentPrice <= priceRange.max;
+        });
+
+        // 3. Sorting
+        items.sort((a, b) => {
+            const statusA = resolveProductPrice(a, categoryOffers, festivalConfig);
+            const statusB = resolveProductPrice(b, categoryOffers, festivalConfig);
+            
+            if (sortBy === 'price-asc') {
+                return statusA.currentPrice - statusB.currentPrice;
+            }
+            if (sortBy === 'price-desc') {
+                return statusB.currentPrice - statusA.currentPrice;
+            }
+            // Default: newest first
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+
+        return items;
+    }, [products, selectedCategory, priceRange, sortBy, categoryOffers, festivalConfig]);
+
+    const resetFilters = () => {
+        setSelectedCategory('all');
+        setPriceRange({ min: 0, max: 25000 });
+        setTempPriceMax(25000);
+        setSortBy('newest');
+        router.push('/shop');
+    };
+
     return (
-        <div className="bg-white">
-            {/* Header */}
-            <section className="section-padding bg-luxury-cream">
-                <div className="max-w-7xl mx-auto text-center">
-                    <h1 className="text-4xl md:text-5xl font-serif font-bold text-luxury-black mb-4">
-                        Our Collection
+        <div className="bg-background min-h-screen">
+            {/* Elegant Header */}
+            <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_right,_rgba(212,175,55,0.08),_transparent_45%),linear-gradient(135deg,_#fdf8f3_0%,_#f7efe8_100%)] border-b border-border py-16">
+                <div className="max-w-7xl mx-auto px-4 text-center">
+                    <p className="text-xs font-bold uppercase tracking-[0.3em] text-accent mb-2">Exquisite collections</p>
+                    <h1 className="text-4xl md:text-5xl font-serif font-bold text-primary mb-4">
+                        The Tuhfina Gallery
                     </h1>
-                    <p className="text-lg text-luxury-gray max-w-2xl mx-auto">
-                        Browse our exquisite range of handcrafted gifts and personalized treasures
+                    <p className="text-sm md:text-base text-text-secondary max-w-2xl mx-auto leading-relaxed font-light">
+                        Browse our curated catalog of luxury jewellery, customized keepsakes, and handcrafted bridal accessories.
                     </p>
                 </div>
             </section>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-                {/* Category Filter */}
-                <div className="mb-12">
-                    <div className="flex flex-wrap gap-3 justify-center">
-                        <button
-                            onClick={() => setSelectedCategory('all')}
-                            className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${selectedCategory === 'all'
-                                ? 'bg-luxury-gold text-white shadow-lg'
-                                : 'bg-white text-luxury-gray border border-gray-300 hover:border-luxury-gold'
-                                }`}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                {/* Advanced Filter Toolbar */}
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b border-border pb-6 mb-8">
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <Button 
+                            variant="outline-luxury" 
+                            size="sm" 
+                            onClick={() => setShowFiltersMobile(!showFiltersMobile)}
+                            className="lg:hidden flex items-center gap-2"
                         >
-                            All Products
-                        </button>
-                        {CATEGORIES.map((category) => (
-                            <button
-                                key={category}
-                                onClick={() => setSelectedCategory(category)}
-                                className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${selectedCategory === category
-                                    ? 'bg-luxury-gold text-white shadow-lg'
-                                    : 'bg-white text-luxury-gray border border-gray-300 hover:border-luxury-gold'
-                                    }`}
+                            <SlidersHorizontal size={16} /> Filters
+                        </Button>
+                        <p className="text-xs font-bold tracking-wider text-text-secondary uppercase">
+                            Showing {processedProducts.length} premium pieces
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+                        <div className="flex items-center gap-2">
+                            <ArrowUpDown size={14} className="text-accent" />
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                                className="bg-transparent border border-border rounded-full text-xs font-semibold px-4 py-2 outline-none focus:border-accent transition"
                             >
-                                {category}
-                            </button>
-                        ))}
+                                <option value="newest">New Arrivals</option>
+                                <option value="price-asc">Price: Low to High</option>
+                                <option value="price-desc">Price: High to Low</option>
+                            </select>
+                        </div>
+                        <Button variant="ghost-luxury" size="sm" onClick={resetFilters} className="text-xs flex items-center gap-1">
+                            <RotateCcw size={12} /> Reset
+                        </Button>
                     </div>
                 </div>
 
-                {/* Products Grid */}
-                {loading ? (
-                    <div className="text-center py-20">
-                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-luxury-gold border-t-transparent"></div>
-                        <p className="mt-4 text-luxury-gray">Loading products...</p>
-                    </div>
-                ) : products.length === 0 ? (
-                    <div className="text-center py-20">
-                        <p className="text-xl text-luxury-gray">No products found in this category.</p>
-                        <p className="text-sm text-luxury-gray mt-2">Check back soon for new arrivals!</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                        {products.map((product) => {
-                            const status = resolveProductPrice(product, categoryOffers, festivalConfig);
-                            return (
-                                <Link
-                                    key={product.id}
-                                    href={`/product/${product.id}`}
-                                    className="group bg-white rounded-lg overflow-hidden card-hover border border-gray-200"
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    {/* Filters Sidebar (Desktop) */}
+                    <div className="hidden lg:block space-y-8">
+                        <div>
+                            <h3 className="font-serif font-bold text-lg mb-4 text-primary border-b border-border pb-2">Categories</h3>
+                            <div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                {ALL_FILTER_CATEGORIES.map((cat) => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => handleCategorySelect(cat)}
+                                        className={`text-left text-sm py-2 px-3 rounded-xl transition duration-200 ${
+                                            selectedCategory.toLowerCase() === cat.toLowerCase()
+                                                ? 'bg-accent/10 text-accent font-semibold'
+                                                : 'text-text-secondary hover:bg-surface hover:text-primary'
+                                        }`}
+                                    >
+                                        {cat === 'all' ? 'All Products' : cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="font-serif font-bold text-lg mb-4 text-primary border-b border-border pb-2">Price Filter</h3>
+                            <div className="px-2">
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="25000"
+                                    step="500"
+                                    value={tempPriceMax}
+                                    onChange={(e) => setTempPriceMax(Number(e.target.value))}
+                                    className="w-full accent-accent bg-border h-1 rounded-lg appearance-none cursor-pointer"
+                                />
+                                <div className="flex justify-between items-center mt-3 text-xs text-text-secondary">
+                                    <span>₹0</span>
+                                    <span className="font-bold text-primary">Up to ₹{tempPriceMax}</span>
+                                </div>
+                                <Button 
+                                    variant="luxury" 
+                                    size="sm" 
+                                    className="w-full mt-4 text-[10px] uppercase font-bold tracking-wider"
+                                    onClick={() => setPriceRange({ min: 0, max: tempPriceMax })}
                                 >
-                                    <div className="relative h-64 bg-gray-100 overflow-hidden">
-                                        {product.images && product.images.length > 0 ? (
-                                            <Image
-                                                src={product.images[0]}
-                                                alt={product.title}
-                                                fill
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-6xl">
-                                                🎁
-                                            </div>
-                                        )}
-
-                                        {/* Sale Badges */}
-                                        <div className="absolute top-3 left-3 flex flex-col gap-2">
-                                            {status.isSaleActive && (
-                                                <div className={`text-white text-[10px] px-3 py-1 rounded-full font-bold flex items-center shadow-lg ${status.isFlash ? 'bg-red-600' : 'bg-luxury-gold'}`}>
-                                                    {status.isFlash && <Clock size={12} className="mr-1" />}
-                                                    {status.label}
-                                                </div>
-                                            )}
-                                            {product.isCustomizable && (
-                                                <div className="bg-luxury-black/70 text-white text-[10px] px-3 py-1 rounded-full font-semibold backdrop-blur-sm">
-                                                    Customizable
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Flash Sale Timer */}
-                                        {status.isFlash && (
-                                            <div className="absolute bottom-3 left-3 right-3">
-                                                <CountdownTimer
-                                                    expiryDate={product.festivalOffer?.isFlash ? new Date(product.festivalOffer.endAt) : new Date(categoryOffers.find(o => o.category === product.category)?.endAt || 0)}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="p-5">
-                                        <h3 className="font-serif font-semibold text-lg text-luxury-black mb-2 group-hover:text-luxury-gold transition-colors line-clamp-2">
-                                            {product.title}
-                                        </h3>
-                                        <p className="text-sm text-luxury-gray mb-3 line-clamp-2">
-                                            {product.description}
-                                        </p>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex flex-col">
-                                                {status.isSaleActive ? (
-                                                    <>
-                                                        <span className="text-sm text-luxury-gray line-through">
-                                                            ₹{product.price}
-                                                        </span>
-                                                        <span className="text-2xl font-bold text-luxury-gold">
-                                                            ₹{status.currentPrice}
-                                                        </span>
-                                                    </>
-                                                ) : (
-                                                    <span className="text-2xl font-bold text-luxury-gold">
-                                                        ₹{product.price}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    className="p-2 rounded-full bg-luxury-cream hover:bg-luxury-gold hover:text-white transition-colors"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                    }}
-                                                >
-                                                    <Heart size={18} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Link>
-                            );
-                        })}
+                                    Apply Price Filter
+                                </Button>
+                            </div>
+                        </div>
                     </div>
-                )}
+
+                    {/* Mobile Filters Drawer / Slide Panel */}
+                    <AnimatePresence>
+                        {showFiltersMobile && (
+                            <motion.div 
+                                initial={{ opacity: 0 }} 
+                                animate={{ opacity: 1 }} 
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm lg:hidden"
+                                onClick={() => setShowFiltersMobile(false)}
+                            >
+                                <motion.div 
+                                    initial={{ x: '-100%' }} 
+                                    animate={{ x: 0 }} 
+                                    exit={{ x: '-100%' }}
+                                    transition={{ type: 'tween', duration: 0.3 }}
+                                    className="w-[80vw] max-w-sm h-full bg-white p-6 shadow-premium overflow-y-auto"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="flex justify-between items-center mb-6 border-b border-border pb-3">
+                                        <h3 className="font-serif font-bold text-xl">Filters</h3>
+                                        <button onClick={() => setShowFiltersMobile(false)} className="p-1 rounded-full bg-surface text-primary"><X size={16} /></button>
+                                    </div>
+                                    
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="font-bold text-xs uppercase tracking-wider text-accent mb-3">Categories</h4>
+                                            <div className="flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-1">
+                                                {ALL_FILTER_CATEGORIES.map((cat) => (
+                                                    <button
+                                                        key={cat}
+                                                        onClick={() => {
+                                                            handleCategorySelect(cat);
+                                                            setShowFiltersMobile(false);
+                                                        }}
+                                                        className={`text-left text-sm py-2 px-3 rounded-xl ${
+                                                            selectedCategory.toLowerCase() === cat.toLowerCase()
+                                                                ? 'bg-accent/10 text-accent font-semibold'
+                                                                : 'text-text-secondary'
+                                                        }`}
+                                                    >
+                                                        {cat === 'all' ? 'All Products' : cat}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h4 className="font-bold text-xs uppercase tracking-wider text-accent mb-3">Price Range</h4>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="25000"
+                                                step="500"
+                                                value={tempPriceMax}
+                                                onChange={(e) => setTempPriceMax(Number(e.target.value))}
+                                                className="w-full accent-accent"
+                                            />
+                                            <div className="flex justify-between items-center mt-2 text-xs">
+                                                <span>₹0</span>
+                                                <span className="font-semibold">Up to ₹{tempPriceMax}</span>
+                                            </div>
+                                            <Button 
+                                                variant="luxury" 
+                                                className="w-full mt-4" 
+                                                onClick={() => {
+                                                    setPriceRange({ min: 0, max: tempPriceMax });
+                                                    setShowFiltersMobile(false);
+                                                }}
+                                            >
+                                                Apply Filter
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Products Grid */}
+                    <div className="lg:col-span-3">
+                        {loading ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {Array.from({ length: 8 }).map((_, idx) => (
+                                    <div key={idx} className="space-y-4">
+                                        <Skeleton className="h-64 w-full" />
+                                        <Skeleton className="h-4 w-2/3" />
+                                        <Skeleton className="h-4 w-1/2" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : processedProducts.length === 0 ? (
+                            <div className="text-center py-24 bg-luxury-warm/20 rounded-[28px] border border-dashed border-accent/20 p-8">
+                                <p className="text-xl text-primary font-serif font-semibold">No luxury products found</p>
+                                <p className="text-sm text-text-secondary mt-2 mb-6">Try refining your filter settings or search query.</p>
+                                <Button variant="outline-luxury" onClick={resetFilters} className="text-xs uppercase font-bold tracking-wider">
+                                    Clear Filters
+                                </Button>
+                            </div>
+                        ) : (
+                            <motion.div 
+                                layout
+                                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+                            >
+                                {processedProducts.map((product) => (
+                                    <motion.div 
+                                        layout
+                                        key={product.id}
+                                        initial={{ opacity: 0, scale: 0.98 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ duration: 0.3 }}
+                                    >
+                                        <ProductCard
+                                            product={product}
+                                            categoryOffers={categoryOffers}
+                                            festivalConfig={festivalConfig}
+                                        />
+                                    </motion.div>
+                                ))}
+                            </motion.div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
 
+// X icon mock if missing in lucide
+function X(props: any) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+    );
+}
+
 export default function ShopPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-transparent"></div>
+            </div>
+        }>
             <ShopContent />
         </Suspense>
     );
