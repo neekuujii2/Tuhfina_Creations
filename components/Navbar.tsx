@@ -32,16 +32,16 @@ export default function Navbar() {
     const [searchValue, setSearchValue] = useState('');
 
     useEffect(() => {
-        const updateScroll = () => setScrolled(window.scrollY > 20);
+        const updateScroll = () => setScrolled(window.scrollY > 50);
         updateScroll();
-        window.addEventListener('scroll', updateScroll);
+        window.addEventListener('scroll', updateScroll, { passive: true });
         return () => window.removeEventListener('scroll', updateScroll);
     }, []);
 
     const isHome = pathname === '/';
     const navClasses = isHome && !scrolled
         ? 'bg-transparent text-white border-b border-white/10'
-        : 'bg-background/90 text-primary border-b border-border backdrop-blur-xl shadow-glass';
+        : 'bg-white/95 text-primary border-b border-border backdrop-blur-xl shadow-md';
 
     const filteredSuggestions = useMemo(() => {
         const query = searchValue.toLowerCase().trim();

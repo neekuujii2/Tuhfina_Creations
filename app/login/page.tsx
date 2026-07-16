@@ -4,13 +4,14 @@ import { useState, FormEvent, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogIn, AlertCircle, Mail, Key, ArrowRight, RefreshCcw, Eye, EyeOff } from 'lucide-react';
+import { LogIn, AlertCircle, AlertTriangle, Mail, Key, ArrowRight, RefreshCcw, Eye, EyeOff } from 'lucide-react';
 
 function LoginContent() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
+    const [notVerifiedInfo, setNotVerifiedInfo] = useState('');
     const [loading, setLoading] = useState(false);
 
     const { signIn, user, isAdmin, loading: authLoading } = useAuth();
@@ -37,6 +38,16 @@ function LoginContent() {
             // Redirection will be handled by the useEffect above once user state updates
         } catch (err: any) {
             if (err.message === 'NOT_VERIFIED') {
+                // Auto-request a fresh OTP before redirecting to verify page
+                try {
+                    await fetch('/api/auth/request-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email }),
+                    });
+                } catch {
+                    // Non-critical: redirect even if resend fails
+                }
                 router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
             } else {
                 setError(err.message || 'Invalid credentials. Please try again.');

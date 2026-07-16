@@ -3,13 +3,16 @@
 import { useState, FormEvent, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { ShieldCheck, AlertCircle, Key, RefreshCcw } from 'lucide-react';
+import { ShieldCheck, AlertCircle, Key, RefreshCcw, Mail, CheckCircle } from 'lucide-react';
 
 function VerifyOtpContent() {
     const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [resendLoading, setResendLoading] = useState(false);
+    const [resendSuccess, setResendSuccess] = useState('');
+    const [resendCooldown, setResendCooldown] = useState(0);
 
     const { verifySignupOtp, user, loading: authLoading } = useAuth();
     const router = useRouter();
@@ -29,6 +32,13 @@ function VerifyOtpContent() {
         }
     }, [email, router, authLoading, user]);
 
+    // Cooldown timer for resend
+    useEffect(() => {
+        if (resendCooldown <= 0) return;
+        const timer = setInterval(() => setResendCooldown((c) => c - 1), 1000);
+        return () => clearInterval(timer);
+    }, [resendCooldown]);
+
     const handleVerify = async (e: FormEvent) => {
         e.preventDefault();
         if (!email) return;
@@ -46,6 +56,29 @@ function VerifyOtpContent() {
             setError(err.message || 'Invalid OTP. Please try again.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleResend = async () => {
+        if (!email || resendCooldown > 0) return;
+        setResendLoading(true);
+        setError('');
+        setResendSuccess('');
+
+        try {
+            const res = await fetch('/api/auth/request-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to resend OTP');
+            setResendSuccess('A new OTP has been sent to your email.');
+            setResendCooldown(60);
+        } catch (err: any) {
+            setError(err.message || 'Failed to resend OTP. Please try again.');
+        } finally {
+            setResendLoading(false);
         }
     };
 
@@ -97,6 +130,13 @@ function VerifyOtpContent() {
                         </div>
                     )}
 
+                    {resendSuccess && (
+                        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start space-x-2">
+                            <CheckCircle className="text-green-500 flex-shrink-0 mt-0.5" size={18} />
+                            <p className="text-sm text-green-700">{resendSuccess}</p>
+                        </div>
+                    )}
+
                     <form onSubmit={handleVerify} className="space-y-6">
                         <div>
                             <div className="relative group">
@@ -130,8 +170,25 @@ function VerifyOtpContent() {
                         </button>
                     </form>
 
-                    <div className="mt-8 pt-8 border-t border-luxury-cream text-center text-sm text-luxury-gray">
-                        Didn&apos;t receive the code? Check your spam folder or try signing up again.
+                    <div className="mt-8 pt-8 border-t border-luxury-cream text-center">
+                        <p className="text-sm text-luxury-gray mb-4">
+                            Didn&apos;t receive the code? Check your spam folder.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={handleResend}
+                            disabled={resendLoading || resendCooldown > 0}
+                            className="inline-flex items-center gap-2 text-sm font-semibold text-luxury-gold hover:text-luxury-darkGold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {resendLoading ? (
+                                <RefreshCcw className="animate-spin" size={16} />
+                            ) : (
+                                <Mail size={16} />
+                            )}
+                            {resendCooldown > 0
+                                ? `Resend OTP in ${resendCooldown}s`
+                                : 'Resend OTP'}
+                        </button>
                     </div>
                 </div>
             </div>
