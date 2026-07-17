@@ -7,6 +7,8 @@ import FestivalConfigModel from '@/models/FestivalConfig';
 import HomeClient from '@/components/home/HomeClient';
 import { Product, Category, CategoryOffer, FestivalConfig } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
     let categories: Category[] = [];
     let products: Product[] = [];

@@ -9,14 +9,17 @@ export default function robots(): MetadataRoute.Robots {
             allow: '/',
             disallow: [
                 '/admin',
-                '/dashboard',
                 '/api/',
+                '/_next/',
+                '/dashboard',
                 '/cart',
                 '/checkout',
                 '/login',
                 '/register',
+                '/verify-otp',
             ],
         },
         sitemap: `${baseUrl}/sitemap.xml`,
+        host: baseUrl,
     }
 }

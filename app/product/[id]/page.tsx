@@ -318,11 +318,7 @@ export default function ProductPage() {
                                         </div>
                                         {customImagePreview && (
                                             <div className="mt-3 relative h-32 w-full rounded-2xl overflow-hidden border border-border">
-                                                <img
-                                                    src={customImagePreview}
-                                                    alt="Customisation Preview"
-                                                    className="w-full h-full object-cover"
-                                                />
+                                                <Image src={customImagePreview} alt="Customisation Preview" fill className="object-cover" unoptimized />
                                             </div>
                                         )}
                                     </div>

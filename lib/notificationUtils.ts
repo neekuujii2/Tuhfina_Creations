@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 export const sendEmailNotification = async (order: any) => {
     const mailOptions = {
         from: `"Tuhfina Creations Alert" <${process.env.SMTP_USER}>`,
-        to: process.env.ADMIN_EMAIL,
+        to: process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',')[0] || process.env.SMTP_USER || 'Tuhfinacreations@gmail.com',
         subject: '🛒 New Paid Order Received',
         html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">

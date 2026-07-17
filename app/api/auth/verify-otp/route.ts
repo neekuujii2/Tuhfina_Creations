@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         let user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
-            const role = normalizedEmail.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() ? 'ADMIN' : 'USER';
+            const role = normalizedEmail.toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',')[0] || 'Tuhfinacreations@gmail.com').toLowerCase() ? 'ADMIN' : 'USER';
             user = await User.create({
                 email: normalizedEmail,
                 name: name || 'User',

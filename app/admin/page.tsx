@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -830,9 +832,9 @@ export default function AdminDashboard() {
                                 return (
                                     <div key={catName} className="bg-white border border-border rounded-2xl p-6 flex flex-col items-center shadow-soft">
                                         <div className="relative h-32 w-full mb-4 bg-luxury-gray/10 rounded-xl overflow-hidden flex items-center justify-center">
-                                            {dbCat?.image ? (
-                                                <img src={dbCat.image} alt={catName} className="w-full h-full object-cover" />
-                                            ) : (
+                                        {dbCat?.image ? (
+                                            <Image src={dbCat.image} alt={catName} fill className="object-cover" unoptimized />
+                                        ) : (
                                                 <span className="text-4xl">
                                                     {catName.includes('Flower') ? '🌸' :
                                                         catName.includes('Earring') ? '💎' :

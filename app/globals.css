@@ -112,6 +112,15 @@
     background-clip: text;
   }
 
+  .animate-ken-burns {
+    animation: ken-burns 20s ease-in-out infinite alternate;
+  }
+
+  @keyframes ken-burns {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.1); }
+  }
+
   .text-gradient-rose {
     background: linear-gradient(135deg, #b76e79 0%, #d4949e 50%, #b76e79 100%);
     -webkit-background-clip: text;

@@ -66,6 +66,46 @@ export const metadata: Metadata = {
     },
 };
 
+const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Tuhfina Creation',
+    description: 'Luxury handcrafted jewellery and bespoke gifts',
+    url: baseUrl,
+    logo: `${baseUrl}/logo.png`,
+    contactPoint: {
+        '@type': 'ContactPoint',
+        telephone: '+91-98735-31273',
+        contactType: 'customer service',
+        email: 'Tuhfinacreations@gmail.com',
+        availableLanguage: ['English', 'Hindi'],
+    },
+    sameAs: [
+        'https://instagram.com/tuhfinacreation',
+        'https://facebook.com/tuhfinacreation',
+        'https://pinterest.com/tuhfinacreation',
+        'https://youtube.com/@tuhfinacreation',
+        'https://linkedin.com/company/tuhfinacreation',
+        'https://wa.me/919873531273',
+    ],
+};
+
+const webSiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Tuhfina Creation',
+    description: 'Luxury handcrafted jewellery and bespoke gifts',
+    url: baseUrl,
+    potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+            '@type': 'EntryPoint',
+            urlTemplate: `${baseUrl}/shop?category={search_term_string}`,
+        },
+        'query-input': 'required name=search_term_string',
+    },
+};
+
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -74,6 +114,14 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body className="font-sans antialiased">
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+                />
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
+                />
                 <AuthProvider>
                     <CartProvider>
                         <ToastProvider>

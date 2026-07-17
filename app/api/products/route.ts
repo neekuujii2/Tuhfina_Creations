@@ -28,8 +28,6 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    console.log('🟡 CREATE PRODUCT BODY:', body); // 🔥 DEBUG
-
     const {
       title,
       description,
@@ -66,8 +64,6 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
-    console.log('🟢 FINAL IMAGES ARRAY:', normalizedImages);
 
     const newProduct = await Product.create({
       title: String(title).trim(),

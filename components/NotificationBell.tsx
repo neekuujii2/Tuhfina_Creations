@@ -25,7 +25,7 @@ export default function NotificationBell() {
                         // Only play sound if this is a fresh arrival
                         if (lastNotatedId.current !== null) {
                             const audio = new Audio('/sounds/notify.mp3');
-                            audio.play().catch(e => console.log('Audio play failed:', e));
+                            audio.play().catch(() => {});
                         }
                         lastNotatedId.current = latest._id;
                     }
