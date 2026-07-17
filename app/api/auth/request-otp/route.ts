@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 export async function POST(req: Request) {
     try {
         const { email } = await req.json();
+        const normalizedEmail = email.toLowerCase().trim();
 
         if (!email) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
 
         // Check rate limit: Max 5 OTP requests per hour per email
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const existingOtp = await Otp.findOne({ email });
+        const existingOtp = await Otp.findOne({ email: normalizedEmail });
 
         if (existingOtp) {
             // If the last request was within the last hour, check count
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
             await existingOtp.save();
         } else {
             await Otp.create({
-                email,
+                email: normalizedEmail,
                 otpHash,
                 expiresAt,
                 requestCount: 1,
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
         }
 
         // Send OTP via email
-        await sendOtpEmail(email, otp);
+        await sendOtpEmail(normalizedEmail, otp);
 
         return NextResponse.json({ message: 'OTP sent successfully' }, { status: 200 });
     } catch (error: any) {

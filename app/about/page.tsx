@@ -1,224 +1,256 @@
-import Image from 'next/image';
+'use client';
+
 import Link from 'next/link';
-import { Star, Heart, Sparkles, ShieldCheck } from 'lucide-react';
-import dbConnect from '@/lib/mongodb';
-import Product from '@/models/Product';
-import { Product as ProductType } from '@/lib/types';
+import Image from 'next/image';
+import { motion, useInView } from 'framer-motion';
+import { useRef } from 'react';
+import { ArrowRight, Gem, Heart, ShieldCheck, Sparkles, BadgeCheck, Quote, Star, Truck, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 const testimonials = [
-    {
-        name: "Ananya Sharma",
-        role: "Verified Buyer",
-        content: "The customized frame I ordered for my parents' anniversary was absolutely stunning. The attention to detail and quality of craftsmanship is unmatched. Highly recommend!",
-        rating: 5,
-        date: "October 2024"
-    },
-    {
-        name: "Rahul Mehra",
-        role: "Gifting Enthusiast",
-        content: "I've bought several artificial flower bouquets from Tuhfina Creation. They look so real and add a premium touch to my living room. Fast delivery too!",
-        rating: 5,
-        date: "November 2024"
-    },
-    {
-        name: "Priya Patel",
-        role: "Corporate Client",
-        content: "Ordered 50+ customized keychains for our company event. Every single one was perfect. The quality of the materials used is very premium. Great experience.",
-        rating: 5,
-        date: "December 2024"
-    }
+    { name: 'Ananya Sharma', role: 'Verified Buyer', text: 'The custom earrings I ordered were breathtaking. The craftsmanship is true luxury, and the rose gold plating has a gorgeous warm sheen.', stars: 5 },
+    { name: 'Vikram Malhotra', role: 'Collector', text: 'Superb quality and exceptionally quick service. The premium gift boxes made the unboxing experience feel incredibly premium.', stars: 5 },
+    { name: 'Priya Patel', role: 'Bridal Client', text: 'Stunning collection! The customizable necklace was the perfect accessory for my engagement. Truly heirloom quality.', stars: 5 },
 ];
 
-export default async function AboutPage() {
-    let categoryProducts: Record<string, ProductType[]> = {};
+const features = [
+    { icon: Gem, title: 'Artisan Craftsmanship', description: 'Every piece is handcrafted by skilled artisans with decades of experience.' },
+    { icon: Sparkles, title: 'Premium Materials', description: 'Only the finest gold-plated metals, genuine stones, and lasting finishes.' },
+    { icon: Heart, title: 'Bespoke Gifting', description: 'Personalised designs that turn cherished moments into timeless keepsakes.' },
+    { icon: BadgeCheck, title: 'Certified Quality', description: 'Each creation comes with a quality certificate and premium gift packaging.' },
+];
 
-    try {
-        await dbConnect();
-        const products = await Product.find({}).sort({ createdAt: -1 }).lean();
+const storyBlocks = [
+    {
+        title: 'Rooted in Tradition',
+        text: 'Our journey began with a deep reverence for India\'s rich artisan heritage. Each piece we create carries forward centuries-old techniques, reimagined for the modern connoisseur. From the hands of master craftsmen to your cherished collection.',
+        image: '/images/story-1.jpg',
+    },
+    {
+        title: 'Designed for You',
+        text: 'We believe luxury should be personal. That\'s why every Tuhfina creation offers bespoke customization — from engraving meaningful dates to crafting one-of-a-kind designs that tell your unique story. Because your jewelry should be as individual as you are.',
+        image: '/images/story-2.jpg',
+    },
+];
 
-        // Group products by category and take top 4 from each
-        products.forEach((p: any) => {
-            const product = { ...p, id: p._id.toString() } as ProductType;
-            if (!categoryProducts[product.category]) {
-                categoryProducts[product.category] = [];
-            }
-            if (categoryProducts[product.category].length < 4) {
-                categoryProducts[product.category].push(product);
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching products for About page:', error);
-    }
+const timeline = [
+    { year: '2018', title: 'The Beginning', description: 'Tuhfina Creations was founded with a vision to blend traditional Indian craftsmanship with contemporary luxury design.' },
+    { year: '2020', title: 'Digital Expansion', description: 'Launched our e-commerce platform to bring handcrafted luxury jewellery to homes across India.' },
+    { year: '2023', title: 'Bespoke Collections', description: 'Introduced fully customizable jewellery lines, allowing customers to co-create their perfect pieces.' },
+    { year: '2025', title: 'Global Reach', description: 'Expanded internationally while staying true to our roots in artisan excellence and customer delight.' },
+];
 
-    const categories = Object.keys(categoryProducts);
+function FadeInSection({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+    const ref = useRef<HTMLDivElement>(null);
+    const isInView = useInView(ref, { once: true, margin: '-80px' });
 
     return (
-        <div className="bg-white">
-            {/* Our Story Section */}
-            <section className="section-padding bg-luxury-cream">
-                <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                        <div className="animate-fade-in">
-                            <h2 className="text-luxury-gold font-serif font-bold uppercase tracking-widest text-sm mb-4">Our Journey</h2>
-                            <h1 className="text-4xl md:text-5xl font-serif font-bold text-luxury-black mb-6">
-                                Crafting Memories with <span className="luxury-text-gradient">Tuhfina Creation</span>
-                            </h1>
-                            <div className="space-y-4 text-luxury-gray text-lg leading-relaxed">
-                                <p>
-                                    At Tuhfina Creation, we believe that gifts are more than just objects; they are expressions of love, gratitude, and cherished memories. Our journey began with a simple passion for creating beautiful, handcrafted pieces that bring joy to people&apos;s lives.
-                                </p>
-                                <p>
-                                    Every product in our collection is meticulously crafted by skilled artisans who pour their heart and soul into every detail. From vibrant artificial flowers to personalized treasures, we ensure that each item meets our high standards of quality and elegance.
-                                </p>
-                                <p>
-                                    Based on trust and a commitment to excellence, we&apos;ve grown into a brand that stands for luxury gifting. We take pride in helping you celebrate life&apos;s most precious moments with gifts that are as unique as the people receiving them.
-                                </p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-8 mt-10">
-                                <div>
-                                    <h4 className="text-2xl font-serif font-bold text-luxury-black mb-1">100%</h4>
-                                    <p className="text-sm text-luxury-gray">Handmade with Love</p>
-                                </div>
-                                <div>
-                                    <h4 className="text-2xl font-serif font-bold text-luxury-black mb-1">5000+</h4>
-                                    <p className="text-sm text-luxury-gray">Happy Customers</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="relative h-[500px] rounded-2xl overflow-hidden shadow-2xl animate-scale-in">
-                            <video
-                                src="/videos/crafting-process.mp4"
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
-                                className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-black/10"></div>
-                        </div>
-                    </div>
+        <motion.div
+            ref={ref}
+            initial={{ opacity: 0, y: 40 }}
+            animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+            transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
+            className={className}
+        >
+            {children}
+        </motion.div>
+    );
+}
+
+export default function AboutPage() {
+    return (
+        <div className="bg-background overflow-x-hidden">
+
+            {/* ─── Hero ─── */}
+            <section className="relative py-24 bg-luxury-warm/20 border-b border-border">
+                <div className="section-shell px-4 sm:px-6 lg:px-10 xl:px-16 text-center">
+                    <FadeInSection>
+                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-2">About Us</p>
+                        <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold text-primary mb-6">
+                            The Tuhfina Difference
+                        </h1>
+                        <p className="max-w-2xl mx-auto text-base sm:text-lg text-text-secondary leading-relaxed">
+                            We are more than a jewellery house. We are storytellers, craftsmen, and curators of moments that matter.
+                        </p>
+                    </FadeInSection>
                 </div>
             </section>
 
-            {/* Values Section */}
+            {/* ─── Brand Story ─── */}
             <section className="section-padding">
-                <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-                        <div className="p-8 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="inline-block p-4 bg-luxury-cream rounded-full mb-6">
-                                <Sparkles className="text-luxury-gold" size={32} />
+                <div className="section-shell">
+                    <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+                        <FadeInSection>
+                            <div className="relative aspect-[4/3] rounded-[28px] overflow-hidden bg-gradient-to-br from-luxury-gold/10 to-accent/10 border border-border">
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-7xl font-serif font-bold text-luxury-gold/20 select-none">T</span>
+                                </div>
                             </div>
-                            <h3 className="text-2xl font-serif font-bold text-luxury-black mb-4">Premium Quality</h3>
-                            <p className="text-luxury-gray">We use only the finest materials to ensure your gifts remain beautiful for years to come.</p>
-                        </div>
-                        <div className="p-8 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="inline-block p-4 bg-luxury-cream rounded-full mb-6">
-                                <Heart className="text-luxury-gold" size={32} />
+                        </FadeInSection>
+                        <FadeInSection delay={0.15}>
+                            <Badge variant="gold" className="mb-4">Our Story</Badge>
+                            <h2 className="text-3xl sm:text-4xl font-serif font-bold text-primary mb-6">Brand Story</h2>
+                            <p className="text-base leading-relaxed text-text-secondary mb-6">
+                                Tuhfina Creations was born from a passion for transforming life&apos;s precious moments into tangible treasures. Founded in India, our atelier combines time-honoured artisan techniques with modern design sensibilities to create jewellery that speaks to the heart.
+                            </p>
+                            <p className="text-base leading-relaxed text-text-secondary mb-8">
+                                Every piece we create is a testament to our commitment to excellence, sustainability, and the belief that true luxury lies in the details.
+                            </p>
+                            <div className="grid sm:grid-cols-2 gap-6">
+                                <div className="p-6 rounded-2xl border border-border bg-surface">
+                                    <h3 className="font-serif font-bold text-primary mb-2">Mission</h3>
+                                    <p className="text-sm text-text-secondary leading-relaxed">To craft meaningful, heirloom-quality jewellery that celebrates life&apos;s most cherished milestones.</p>
+                                </div>
+                                <div className="p-6 rounded-2xl border border-border bg-surface">
+                                    <h3 className="font-serif font-bold text-primary mb-2">Vision</h3>
+                                    <p className="text-sm text-text-secondary leading-relaxed">To become the most trusted name in bespoke luxury gifting, recognised globally for artistry and integrity.</p>
+                                </div>
                             </div>
-                            <h3 className="text-2xl font-serif font-bold text-luxury-black mb-4">Personalized Touch</h3>
-                            <p className="text-luxury-gray">Customize your gifts to make them truly unique and special for your loved ones.</p>
-                        </div>
-                        <div className="p-8 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="inline-block p-4 bg-luxury-cream rounded-full mb-6">
-                                <ShieldCheck className="text-luxury-gold" size={32} />
-                            </div>
-                            <h3 className="text-2xl font-serif font-bold text-luxury-black mb-4">Trusted Brand</h3>
-                            <p className="text-luxury-gray">Join thousands of customers who trust us for their most important gifting needs.</p>
-                        </div>
+                        </FadeInSection>
                     </div>
                 </div>
             </section>
 
-            {/* Category-wise Top Products */}
-            <section className="section-padding bg-luxury-cream">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl md:text-5xl font-serif font-bold text-luxury-black mb-4">Our Masterpieces</h2>
-                        <p className="text-lg text-luxury-gray max-w-2xl mx-auto">Explore the finest selections from our diverse collections</p>
-                    </div>
+            {/* ─── The Tuhfina Difference ─── */}
+            <section className="section-padding bg-luxury-warm/20 border-y border-border">
+                <div className="section-shell">
+                    <FadeInSection className="text-center mb-16">
+                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-2">Why Choose Us</p>
+                        <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">The Tuhfina Difference</h2>
+                    </FadeInSection>
 
-                    {categories.length > 0 ? (
-                        <div className="space-y-20">
-                            {categories.map((category) => (
-                                <div key={category}>
-                                    <div className="flex justify-between items-end mb-8 border-b border-luxury-gold/20 pb-4">
-                                        <h3 className="text-3xl font-serif font-bold text-luxury-black">{category}</h3>
-                                        <Link href={`/shop?category=${encodeURIComponent(category)}`} className="text-luxury-gold font-semibold hover:underline">
-                                            View All
-                                        </Link>
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        {features.map((feat, i) => (
+                            <FadeInSection key={feat.title} delay={i * 0.1}>
+                                <div className="group relative rounded-[24px] border border-border bg-surface p-7 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_28px_70px_rgba(17,17,17,0.14)] hover:border-luxury-gold/20">
+                                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent transition-all duration-500 group-hover:bg-luxury-gold group-hover:text-white group-hover:scale-110 group-hover:rotate-3">
+                                        <feat.icon size={24} />
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                                        {categoryProducts[category].map((product) => (
-                                            <Link key={product.id} href={`/product/${product.id}`} className="group">
-                                                <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
-                                                    <div className="relative h-72 w-full overflow-hidden">
-                                                        <Image
-                                                            src={product.images[0]}
-                                                            alt={product.title}
-                                                            fill
-                                                            className="object-cover group-hover:scale-110 transition-transform duration-500"
-                                                        />
-                                                    </div>
-                                                    <div className="p-6">
-                                                        <h4 className="font-serif font-bold text-lg text-luxury-black mb-2 line-clamp-1">{product.title}</h4>
-                                                        <p className="text-luxury-gold font-bold">₹{product.price.toLocaleString()}</p>
-                                                    </div>
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
+                                    <h3 className="text-lg font-serif font-bold text-primary mb-2">{feat.title}</h3>
+                                    <p className="text-sm leading-relaxed text-text-secondary">{feat.description}</p>
+                                    <div className="absolute inset-0 rounded-[24px] bg-gradient-to-b from-luxury-gold/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none" />
                                 </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-20">
-                            <p className="text-luxury-gray italic">New masterpieces coming soon...</p>
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            {/* Testimonials Section */}
-            <section className="section-padding">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h2 className="text-4xl md:text-5xl font-serif font-bold text-luxury-black mb-4">What Our Clients Say</h2>
-                        <p className="text-lg text-luxury-gray">Experiences from our wonderful community of gift-givers</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {testimonials.map((testimonial, index) => (
-                            <div key={index} className="bg-luxury-cream p-8 rounded-2xl relative">
-                                <div className="flex mb-4">
-                                    {[...Array(testimonial.rating)].map((_, i) => (
-                                        <Star key={i} className="text-luxury-gold fill-luxury-gold" size={18} />
-                                    ))}
-                                </div>
-                                <p className="text-luxury-black italic mb-6 leading-relaxed">&quot;{testimonial.content}&quot;</p>
-                                <div className="flex items-center space-x-4">
-                                    <div className="w-12 h-12 rounded-full bg-luxury-gold/20 flex items-center justify-center text-luxury-gold font-bold text-xl">
-                                        {testimonial.name.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h5 className="font-serif font-bold text-luxury-black">{testimonial.name}</h5>
-                                        <p className="text-xs text-luxury-gray">{testimonial.role} • {testimonial.date}</p>
-                                    </div>
-                                </div>
-                            </div>
+                            </FadeInSection>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* Final CTA */}
-            <section className="section-padding luxury-gradient text-white">
-                <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6">Become Part of Our Story</h2>
-                    <p className="text-xl mb-10 opacity-90">Experience the magic of handcrafted luxury gifting today.</p>
-                    <Link href="/shop" className="bg-white text-luxury-gold px-12 py-4 rounded-full font-bold text-lg hover:shadow-2xl transition-all duration-300 hover:scale-105">
-                        Start Your Collection
-                    </Link>
+            {/* ─── Our Craft ─── */}
+            <section className="section-padding">
+                <div className="section-shell">
+                    <FadeInSection className="text-center mb-16">
+                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-2">Manufacturing Process</p>
+                        <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Our Craft</h2>
+                    </FadeInSection>
+
+                    <div className="grid md:grid-cols-3 gap-8">
+                        {[
+                            { step: '01', title: 'Design', text: 'Our designers sketch each piece with precision, balancing tradition and modernity.' },
+                            { step: '02', title: 'Craft', text: 'Master artisans handcraft every detail using techniques passed down through generations.' },
+                            { step: '03', title: 'Quality', text: 'Each creation undergoes rigorous inspection to ensure flawless finishing and durability.' },
+                        ].map((item, i) => (
+                            <FadeInSection key={item.step} delay={i * 0.1}>
+                                <div className="p-8 rounded-[24px] border border-border bg-surface text-center transition-all duration-500 hover:-translate-y-2 hover:shadow-premium">
+                                    <p className="text-4xl font-serif font-bold text-luxury-gold/20 mb-4">{item.step}</p>
+                                    <h3 className="text-xl font-serif font-bold text-primary mb-3">{item.title}</h3>
+                                    <p className="text-sm text-text-secondary leading-relaxed">{item.text}</p>
+                                </div>
+                            </FadeInSection>
+                        ))}
+                    </div>
                 </div>
+            </section>
+
+            {/* ─── Testimonials ─── */}
+            <section className="section-padding bg-luxury-warm/20 border-y border-border">
+                <div className="section-shell">
+                    <FadeInSection className="text-center mb-16">
+                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-2">Testimonials</p>
+                        <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Client Experiences</h2>
+                    </FadeInSection>
+
+                    <div className="grid gap-8 md:grid-cols-3">
+                        {testimonials.map((t, i) => (
+                            <FadeInSection key={i} delay={i * 0.12}>
+                                <div className="card-hover rounded-[28px] border border-border bg-surface p-8 flex flex-col justify-between relative h-full">
+                                    <Quote className="absolute right-6 top-6 text-luxury-gold/10 h-10 w-10" />
+                                    <div>
+                                        <div className="flex gap-1 text-luxury-gold mb-4">
+                                            {Array.from({ length: t.stars }).map((_, idx) => (
+                                                <Star key={idx} size={16} fill="#D4AF37" />
+                                            ))}
+                                        </div>
+                                        <p className="text-sm leading-relaxed text-text-secondary italic">&ldquo;{t.text}&rdquo;</p>
+                                    </div>
+                                    <div className="mt-6 pt-6 border-t border-border flex items-center gap-4">
+                                        <div className="h-11 w-11 rounded-full bg-gradient-to-br from-luxury-gold/20 to-accent/20 flex items-center justify-center text-sm font-bold text-luxury-gold font-serif border border-luxury-gold/20">
+                                            {t.name.split(' ').map(n => n[0]).join('')}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-serif font-bold text-primary text-sm">{t.name}</h4>
+                                            <p className="text-xs text-text-secondary">{t.role}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </FadeInSection>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── Timeline ─── */}
+            <section className="section-padding">
+                <div className="section-shell">
+                    <FadeInSection className="text-center mb-16">
+                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-2">Our Journey</p>
+                        <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Timeline</h2>
+                    </FadeInSection>
+
+                    <div className="relative">
+                        <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-px bg-border md:-translate-x-px" />
+                        <div className="space-y-12">
+                            {timeline.map((item, i) => (
+                                <FadeInSection key={item.year} delay={i * 0.1}>
+                                    <div className={`relative flex flex-col md:flex-row gap-6 md:gap-12 ${i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
+                                        <div className="md:w-1/2 pl-12 md:pl-0">
+                                            <div className="p-6 rounded-[24px] border border-border bg-surface transition-all duration-500 hover:shadow-premium">
+                                                <p className="text-xs font-bold uppercase tracking-wider text-luxury-gold mb-1">{item.year}</p>
+                                                <h3 className="text-xl font-serif font-bold text-primary mb-2">{item.title}</h3>
+                                                <p className="text-sm text-text-secondary leading-relaxed">{item.description}</p>
+                                            </div>
+                                        </div>
+                                        <div className="absolute left-4 md:left-1/2 top-6 w-3 h-3 rounded-full bg-luxury-gold border-2 border-white md:-translate-x-1.5" />
+                                    </div>
+                                </FadeInSection>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── CTA ─── */}
+            <section className="relative overflow-hidden bg-primary py-24 text-white">
+                <div
+                    className="absolute inset-0 opacity-[0.06]"
+                    style={{
+                        backgroundImage: 'radial-gradient(circle, #D4AF37 1px, transparent 1px)',
+                        backgroundSize: '24px 24px',
+                    }}
+                />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_rgba(212,175,55,0.15),_transparent_50%)]" />
+
+                <FadeInSection className="section-shell relative z-10 px-4 sm:px-6 lg:px-10 xl:px-16 text-center max-w-3xl">
+                    <h2 className="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-6">
+                        Experience the Tuhfina Difference
+                    </h2>
+                    <p className="text-white/70 text-base leading-relaxed mb-8">
+                        Discover collections that celebrate craftsmanship, luxury, and your unique story.
+                    </p>
+                    <Link href="/shop" className="btn-gold px-8 py-3.5 text-xs uppercase font-bold tracking-wider rounded-full hover:scale-105 transition duration-300">
+                        Shop Collection
+                    </Link>
+                </FadeInSection>
             </section>
         </div>
     );

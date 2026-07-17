@@ -78,7 +78,7 @@ export default function RootLayout({
                     <CartProvider>
                         <ToastProvider>
                             <Navbar />
-                            <main className="min-h-screen pt-20">
+                            <main className="min-h-screen pt-32">
                                 {children}
                             </main>
                             <Footer />

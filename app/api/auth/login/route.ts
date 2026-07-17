@@ -8,13 +8,14 @@ export async function POST(req: NextRequest) {
     try {
         await dbConnect();
         const { email, password } = await req.json();
+        const normalizedEmail = email.toLowerCase().trim();
         const ADMIN_EMAIL = 'Tuhfinacreations@gmail.com';
 
         if (!email || !password) {
             return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
         }
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: normalizedEmail });
         if (!user) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
 
         // Create JWT session
         const sessionPayload = {
-            userId: user._id,
+            userId: user._id.toString(),
             email: user.email,
             role: user.role,
         };
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             message: 'Login successful',
             user: {
-                id: user._id,
+                id: user._id.toString(),
                 email: user.email,
                 role: user.role
             }

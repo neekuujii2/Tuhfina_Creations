@@ -25,7 +25,16 @@ export async function GET(req: NextRequest) {
             await user.save();
         }
 
-        return NextResponse.json({ user }, { status: 200 });
+        return NextResponse.json({ user: {
+            _id: user._id.toString(),
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            isVerified: user.isVerified,
+        }}, { status: 200 });
 
     } catch (error: any) {
         console.error('Auth check error:', error);

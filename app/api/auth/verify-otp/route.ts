@@ -8,6 +8,7 @@ import { createSession } from '@/lib/auth';
 export async function POST(req: Request) {
     try {
         const { email, otp, name } = await req.json();
+        const normalizedEmail = email.toLowerCase().trim();
 
         if (!email || !otp) {
             return NextResponse.json({ error: 'Email and OTP are required' }, { status: 400 });
@@ -15,7 +16,7 @@ export async function POST(req: Request) {
 
         await dbConnect();
 
-        const existingOtp = await Otp.findOne({ email });
+        const existingOtp = await Otp.findOne({ email: normalizedEmail });
 
         if (!existingOtp) {
             return NextResponse.json({ error: 'OTP not found or expired' }, { status: 400 });
@@ -29,18 +30,17 @@ export async function POST(req: Request) {
 
         // Check expiry
         if (new Date() > existingOtp.expiresAt) {
-            await Otp.deleteOne({ email });
+            await Otp.deleteOne({ email: normalizedEmail });
             return NextResponse.json({ error: 'OTP expired' }, { status: 400 });
         }
 
         // OTP is valid - Now find or create user
-        let user = await User.findOne({ email });
+        let user = await User.findOne({ email: normalizedEmail });
 
         if (!user) {
-            const role = email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() ? 'ADMIN' : 'USER';
-            // Cleanup: The user model has 'name' as optional
+            const role = normalizedEmail.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase() ? 'ADMIN' : 'USER';
             user = await User.create({
-                email,
+                email: normalizedEmail,
                 name: name || 'User',
                 role,
             });
@@ -54,12 +54,12 @@ export async function POST(req: Request) {
         });
 
         // Delete OTP after success
-        await Otp.deleteOne({ email });
+        await Otp.deleteOne({ email: normalizedEmail });
 
         return NextResponse.json({
             message: 'Authentication successful',
             user: {
-                id: user._id,
+                id: user._id.toString(),
                 email: user.email,
                 name: user.name,
                 role: user.role

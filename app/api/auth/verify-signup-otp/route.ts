@@ -8,12 +8,13 @@ export async function POST(req: NextRequest) {
     try {
         await dbConnect();
         const { email, otp } = await req.json();
+        const normalizedEmail = email.toLowerCase().trim();
 
         if (!email || !otp) {
             return NextResponse.json({ error: 'Email and OTP are required' }, { status: 400 });
         }
 
-        const otpRecord = await Otp.findOne({ email });
+        const otpRecord = await Otp.findOne({ email: normalizedEmail });
         if (!otpRecord) {
             return NextResponse.json({ error: 'OTP expired or not found' }, { status: 400 });
         }
@@ -27,10 +28,10 @@ export async function POST(req: NextRequest) {
 
         // Mark user as verified
         const user = await User.findOneAndUpdate(
-            { email },
+            { email: normalizedEmail },
             {
                 isVerified: true,
-                role: email.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'ADMIN' : 'USER'
+                role: normalizedEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'ADMIN' : 'USER'
             },
             { new: true }
         );
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Delete OTP record
-        await Otp.deleteOne({ email });
+        await Otp.deleteOne({ email: normalizedEmail });
 
         return NextResponse.json({
             message: 'Email verified successfully. You can now login.',

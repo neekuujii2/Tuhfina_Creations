@@ -3,11 +3,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, useInView } from 'framer-motion';
-import { useRef, useEffect, useState, useCallback } from 'react';
-import { ArrowRight, Gem, Heart, ShieldCheck, Sparkles, Star, Quote, Truck, Users, BadgeCheck, Play } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import { ArrowRight, Gem, ShieldCheck, Truck, Users, Play, Sparkles } from 'lucide-react';
 import { Product, Category, CategoryOffer, FestivalConfig } from '@/lib/types';
 import ProductCard from '@/components/cards/ProductCard';
-import CategoryCard from '@/components/cards/CategoryCard';
 import SaleBanner from '@/components/SaleBanner';
 import { Badge } from '@/components/ui/badge';
 
@@ -19,43 +18,11 @@ interface HomeClientProps {
     categoryOffers: CategoryOffer[];
 }
 
-const featuredCollections = [
-    { title: 'Wedding Collection', description: 'Celebrate forever with heirloom-inspired elegance.', image: '/images/hero-1.jpg' },
-    { title: 'Minimal Collection', description: 'Soft sculptural silhouettes for every day.', image: '/images/hero-2.jpg' },
-    { title: 'Gift Collection', description: 'Thoughtfully wrapped pieces for life\'s sweetest moments.', image: '/images/hero-3.jpg' },
-];
-
-const testimonials = [
-    { name: 'Ananya Sharma', role: 'Verified Buyer', text: 'The custom earrings I ordered were breathtaking. The craftsmanship is true luxury, and the rose gold plating has a gorgeous warm sheen.', stars: 5 },
-    { name: 'Vikram Malhotra', role: 'Collector', text: 'Superb quality and exceptionally quick service. The premium gift boxes made the unboxing experience feel incredibly premium.', stars: 5 },
-    { name: 'Priya Patel', role: 'Bridal Client', text: 'Stunning collection! The customizable necklace was the perfect accessory for my engagement. Truly heirloom quality.', stars: 5 },
-];
-
 const stats = [
     { icon: Users, value: 500, suffix: '+', label: 'Happy Customers' },
     { icon: Gem, value: 100, suffix: '%', label: 'Handmade' },
     { icon: Truck, value: 100, suffix: '%', label: 'Free Pan-India Shipping' },
     { icon: ShieldCheck, value: 100, suffix: '%', label: 'Certified Quality' },
-];
-
-const features = [
-    { icon: Gem, title: 'Artisan Craftsmanship', description: 'Every piece is handcrafted by skilled artisans with decades of experience.' },
-    { icon: Sparkles, title: 'Premium Materials', description: 'Only the finest gold-plated metals, genuine stones, and lasting finishes.' },
-    { icon: Heart, title: 'Bespoke Gifting', description: 'Personalised designs that turn cherished moments into timeless keepsakes.' },
-    { icon: BadgeCheck, title: 'Certified Quality', description: 'Each creation comes with a quality certificate and premium gift packaging.' },
-];
-
-const storyBlocks = [
-    {
-        title: 'Rooted in Tradition',
-        text: 'Our journey began with a deep reverence for India\'s rich artisan heritage. Each piece we create carries forward centuries-old techniques, reimagined for the modern connoisseur. From the hands of master craftsmen to your cherished collection.',
-        image: '/images/story-1.jpg',
-    },
-    {
-        title: 'Designed for You',
-        text: 'We believe luxury should be personal. That\'s why every Tuhfina creation offers bespoke customization — from engraving meaningful dates to crafting one-of-a-kind designs that tell your unique story. Because your jewelry should be as individual as you are.',
-        image: '/images/story-2.jpg',
-    },
 ];
 
 function useCountUp(end: number, duration: number = 2000) {
@@ -95,6 +62,39 @@ function FadeInSection({ children, className = '', delay = 0 }: { children: Reac
     );
 }
 
+function HeroVideoSlider() {
+    const [index, setIndex] = useState(0);
+    const videos = [
+        '/videos/crafting-process.mp4',
+        '/videos/crafting-process12.mp4',
+    ];
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setIndex((prev) => (prev + 1) % videos.length);
+        }, 8000);
+        return () => clearInterval(timer);
+    }, [videos.length]);
+
+    return (
+        <div className="absolute inset-0">
+            {videos.map((src, i) => (
+                <video
+                    key={src}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${i === index ? 'opacity-100' : 'opacity-0'}`}
+                    poster="/images/hero-poster.jpg"
+                >
+                    <source src={src} type="video/mp4" />
+                </video>
+            ))}
+        </div>
+    );
+}
+
 export default function HomeClient({ products, categories, settings, festivalConfig, categoryOffers }: HomeClientProps) {
     const isSaleActive = settings.isSaleActive;
     const saleMessage = settings.saleMessage || 'Festival Special Sale is LIVE!';
@@ -126,25 +126,16 @@ export default function HomeClient({ products, categories, settings, festivalCon
             )}
 
             {/* ─── Hero Section with Video Background ─── */}
-            <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
-                {/* Video Background */}
+            <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
+                {/* Video Background Slider */}
                 <div className="absolute inset-0 z-0">
-                    <video
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        className="absolute inset-0 h-full w-full object-cover"
-                        poster="/images/hero-poster.jpg"
-                    >
-                        <source src="/videos/crafting-process.mp4" type="video/mp4" />
-                    </video>
+                    <HeroVideoSlider />
                     {/* Dark gradient overlay */}
                     <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
                 </div>
 
                 {/* Content */}
-                <div className="section-shell relative z-10 px-4 sm:px-6 lg:px-10 xl:px-16 py-32 text-center">
+                <div className="section-shell relative z-10 px-4 sm:px-6 lg:px-10 xl:px-16 py-24 text-center">
                     <motion.div
                         initial={{ opacity: 0, y: 30, scale: 0.97 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -211,31 +202,6 @@ export default function HomeClient({ products, categories, settings, festivalCon
                 </div>
             </section>
 
-            {/* ─── Features Bento Grid ─── */}
-            <section className="section-padding">
-                <div className="section-shell">
-                    <FadeInSection className="text-center mb-16">
-                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-2">The Tuhfina Difference</p>
-                        <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Why Choose Us</h2>
-                    </FadeInSection>
-
-                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                        {features.map((feat, i) => (
-                            <FadeInSection key={feat.title} delay={i * 0.1}>
-                                <div className="group relative rounded-[24px] border border-border bg-surface p-7 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_28px_70px_rgba(17,17,17,0.14)] hover:border-luxury-gold/20">
-                                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 text-accent transition-all duration-500 group-hover:bg-luxury-gold group-hover:text-white group-hover:scale-110 group-hover:rotate-3">
-                                        <feat.icon size={24} />
-                                    </div>
-                                    <h3 className="text-lg font-serif font-bold text-primary mb-2">{feat.title}</h3>
-                                    <p className="text-sm leading-relaxed text-text-secondary">{feat.description}</p>
-                                    <div className="absolute inset-0 rounded-[24px] bg-gradient-to-b from-luxury-gold/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 pointer-events-none" />
-                                </div>
-                            </FadeInSection>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
             {/* ─── Categories Bento Grid ─── */}
             <section className="section-padding bg-luxury-warm/20 border-y border-border">
                 <div className="section-shell">
@@ -269,7 +235,6 @@ export default function HomeClient({ products, categories, settings, festivalCon
                                             />
                                         </div>
                                     ) : (
-                                        /* Elegant letter tile fallback — no emoji */
                                         <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/10 via-luxury-cream/40 to-accent/10 flex items-center justify-center">
                                             <span className="text-7xl font-serif font-bold text-luxury-gold/30 select-none">
                                                 {cat.name.charAt(0)}
@@ -277,10 +242,8 @@ export default function HomeClient({ products, categories, settings, festivalCon
                                         </div>
                                     )}
 
-                                    {/* Hover overlay */}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                                    {/* Content sliding up on hover */}
                                     <div className="absolute bottom-0 left-0 right-0 p-7 translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500">
                                         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-luxury-gold mb-1">{displayCategories.length} items</p>
                                         <h3 className="text-xl font-serif font-bold text-white">{cat.name}</h3>
@@ -289,7 +252,6 @@ export default function HomeClient({ products, categories, settings, festivalCon
                                         )}
                                     </div>
 
-                                    {/* Default label (visible when not hovered) */}
                                     <div className="absolute bottom-0 left-0 right-0 p-7 bg-gradient-to-t from-black/50 to-transparent group-hover:opacity-0 transition-opacity duration-500">
                                         <h3 className="text-lg font-serif font-bold text-white">{cat.name}</h3>
                                     </div>
@@ -329,48 +291,8 @@ export default function HomeClient({ products, categories, settings, festivalCon
                 </section>
             )}
 
-            {/* ─── Brand Story / Featured Products Zigzag ─── */}
-            <section className="section-padding bg-luxury-warm/20 border-y border-border">
-                <div className="section-shell">
-                    <FadeInSection className="text-center mb-16">
-                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-2">Our Craft</p>
-                        <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">The Tuhfina Story</h2>
-                    </FadeInSection>
-
-                    {storyBlocks.map((block, i) => (
-                        <FadeInSection key={block.title}>
-                            <div className={`grid items-center gap-10 lg:gap-16 mb-16 last:mb-0 lg:grid-cols-2 ${i % 2 !== 0 ? 'lg:direction-rtl' : ''}`}>
-                                {/* Image side */}
-                                <div className={`relative ${i % 2 !== 0 ? 'lg:order-2' : ''}`}>
-                                    <div className="relative aspect-[4/3] rounded-[28px] overflow-hidden bg-gradient-to-br from-luxury-gold/10 to-accent/10 border border-border">
-                                        {/* Placeholder gradient tile — replace with next/image when assets are ready */}
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <span className="text-6xl font-serif font-bold text-luxury-gold/20 select-none">{block.title.charAt(0)}</span>
-                                        </div>
-                                    </div>
-                                    {/* Decorative accent */}
-                                    <div className="absolute -bottom-4 -right-4 h-24 w-24 rounded-full bg-luxury-gold/10 blur-3xl pointer-events-none" />
-                                </div>
-
-                                {/* Text side */}
-                                <div className={`${i % 2 !== 0 ? 'lg:order-1' : ''}`}>
-                                    <Badge variant="gold" className="mb-4">Our Heritage</Badge>
-                                    <h3 className="text-2xl sm:text-3xl font-serif font-bold text-primary mb-5">{block.title}</h3>
-                                    <p className="text-base leading-relaxed text-text-secondary mb-8">{block.text}</p>
-                                    <Link href="/shop" className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-luxury-gold hover:text-luxury-darkGold transition duration-300 group/link">
-                                        Shop Now
-                                        <ArrowRight size={16} className="transition-transform duration-300 group-hover/link:translate-x-1" />
-                                    </Link>
-                                </div>
-                            </div>
-                        </FadeInSection>
-                    ))}
-                </div>
-            </section>
-
             {/* ─── Bespoke CTA Banner ─── */}
             <section className="relative overflow-hidden bg-primary py-24 text-white">
-                {/* Dot pattern overlay */}
                 <div
                     className="absolute inset-0 opacity-[0.06]"
                     style={{
@@ -392,44 +314,6 @@ export default function HomeClient({ products, categories, settings, festivalCon
                         Start Customising
                     </Link>
                 </FadeInSection>
-            </section>
-
-            {/* ─── Testimonials ─── */}
-            <section className="section-padding bg-background">
-                <div className="section-shell">
-                    <FadeInSection className="text-center mb-16">
-                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-2">Testimonials</p>
-                        <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Client Experiences</h2>
-                    </FadeInSection>
-
-                    <div className="grid gap-8 md:grid-cols-3">
-                        {testimonials.map((t, i) => (
-                            <FadeInSection key={i} delay={i * 0.12}>
-                                <div className="card-hover rounded-[28px] border border-border bg-surface p-8 flex flex-col justify-between relative h-full">
-                                    <Quote className="absolute right-6 top-6 text-luxury-gold/10 h-10 w-10" />
-                                    <div>
-                                        <div className="flex gap-1 text-luxury-gold mb-4">
-                                            {Array.from({ length: t.stars }).map((_, idx) => (
-                                                <Star key={idx} size={16} fill="#D4AF37" />
-                                            ))}
-                                        </div>
-                                        <p className="text-sm leading-relaxed text-text-secondary italic">&ldquo;{t.text}&rdquo;</p>
-                                    </div>
-                                    <div className="mt-6 pt-6 border-t border-border flex items-center gap-4">
-                                        {/* Avatar circle */}
-                                        <div className="h-11 w-11 rounded-full bg-gradient-to-br from-luxury-gold/20 to-accent/20 flex items-center justify-center text-sm font-bold text-luxury-gold font-serif border border-luxury-gold/20">
-                                            {t.name.split(' ').map(n => n[0]).join('')}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-serif font-bold text-primary text-sm">{t.name}</h4>
-                                            <p className="text-xs text-text-secondary">{t.role}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </FadeInSection>
-                        ))}
-                    </div>
-                </div>
             </section>
         </div>
     );

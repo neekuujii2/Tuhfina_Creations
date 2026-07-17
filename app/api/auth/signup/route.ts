@@ -19,20 +19,19 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Passwords do not match' }, { status: 400 });
         }
 
-        const existingUser = await User.findOne({ email });
+        const normalizedEmail = email.toLowerCase().trim();
+        const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser) {
             if (existingUser.isVerified) {
                 return NextResponse.json({ error: 'User already exists' }, { status: 400 });
             } else {
-                // User exists but not verified, we can overwrite or just update OTP
-                // For simplicity, let's delete the unverified user and start over
-                await User.deleteOne({ email });
+                await User.deleteOne({ email: normalizedEmail });
             }
         }
 
         const hashedPassword = await bcrypt.hash(password, 12);
         const newUser = await User.create({
-            email,
+            email: normalizedEmail,
             password: hashedPassword,
             isVerified: false,
         });
@@ -43,10 +42,10 @@ export async function POST(req: NextRequest) {
 
         // Save OTP to DB
         await Otp.findOneAndUpdate(
-            { email },
+            { email: normalizedEmail },
             {
                 otpHash,
-                expiresAt: new Date(), // TTL will handle deletion after 5 mins
+                expiresAt: new Date(Date.now() + 5 * 60 * 1000),
                 requestCount: 1,
                 lastRequestedAt: new Date()
             },
@@ -54,11 +53,11 @@ export async function POST(req: NextRequest) {
         );
 
         // Send OTP via Email
-        await sendOtpEmail(email, otp);
+        await sendOtpEmail(normalizedEmail, otp);
 
         return NextResponse.json({
             message: 'OTP sent to your email. Please verify.',
-            email: email
+            email: normalizedEmail
         }, { status: 201 });
 
     } catch (error: any) {
