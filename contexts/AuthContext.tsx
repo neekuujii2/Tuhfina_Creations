@@ -1,22 +1,22 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { authClient } from '@/lib/auth-client';
 
 interface User {
     id: string;
-    uid: string;
     email: string;
     name?: string;
     role: 'ADMIN' | 'USER';
     createdAt: string;
+    isVerified?: boolean;
 }
 
 interface AuthContextType {
     user: User | null;
     loading: boolean;
     signUp: (email: string, password: string, confirmPassword: string) => Promise<void>;
-    verifySignupOtp: (email: string, otp: string) => Promise<void>;
     signIn: (email: string, password: string) => Promise<void>;
     signOut: () => Promise<void>;
     isAdmin: boolean;
@@ -27,7 +27,6 @@ const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
     signUp: async () => { },
-    verifySignupOtp: async () => { },
     signIn: async () => { },
     signOut: async () => { },
     isAdmin: false,
@@ -36,100 +35,80 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'Tuhfinacreations@gmail.com')
+    .split(',')
+    .map(e => e.trim().toLowerCase());
+
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
-    const refreshUser = async () => {
+    const refreshUser = useCallback(async () => {
         try {
-            const res = await fetch('/api/auth/me');
-            if (res.ok) {
-                const data = await res.json();
-                if (data.user) {
-                    setUser({
-                        ...data.user,
-                        id: data.user._id,
-                        uid: data.user._id,
-                    });
-                } else {
-                    setUser(null);
-                }
+            const { data } = await authClient.getSession();
+            if (data?.user) {
+                const su = data.user as any;
+                const email = (su.email || '').toLowerCase();
+                setUser({
+                    id: su.id || su._id || '',
+                    email: su.email || '',
+                    name: su.name || '',
+                    role: ADMIN_EMAILS.includes(email) ? 'ADMIN' : (su.role || 'USER'),
+                    createdAt: su.createdAt || new Date().toISOString(),
+                    isVerified: su.emailVerified || su.isVerified,
+                });
             } else {
                 setUser(null);
             }
-        } catch (error) {
-            console.error('Error refreshing user:', error);
+        } catch {
             setUser(null);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         refreshUser();
+    }, [refreshUser]);
+
+    const signUp = useCallback(async (email: string, password: string, _confirmPassword: string) => {
+        const { error } = await authClient.signUp.email({
+            email,
+            password,
+            name: email.split('@')[0],
+        });
+        if (error) {
+            throw new Error(error.message || 'Signup failed');
+        }
     }, []);
 
-    const signUp = async (email: string, password: string, confirmPassword: string) => {
-        const res = await fetch('/api/auth/signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, confirmPassword }),
+    const signIn = useCallback(async (email: string, password: string) => {
+        const { error } = await authClient.signIn.email({
+            email,
+            password,
         });
 
-        const data = await res.json();
-        if (!res.ok) {
-            throw new Error(data.error || 'Signup failed');
-        }
-    };
-
-    const verifySignupOtp = async (email: string, otp: string) => {
-        const res = await fetch('/api/auth/verify-signup-otp', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, otp }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-            throw new Error(data.error || 'Verification failed');
-        }
-    };
-
-    const signIn = async (email: string, password: string) => {
-        const res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) {
-            if (data.notVerified) {
+        if (error) {
+            if (error.code === 'EMAIL_NOT_VERIFIED') {
                 throw new Error('NOT_VERIFIED');
             }
-            throw new Error(data.error || 'Login failed');
+            throw new Error(error.message || 'Login failed');
         }
 
-        if (data.user) {
-            setUser({
-                ...data.user,
-                id: data.user.id,
-                uid: data.user.id,
-            });
-        }
-    };
+        await refreshUser();
+    }, [refreshUser]);
 
-    const signOut = async () => {
-        await fetch('/api/auth/logout', { method: 'POST' });
+    const signOut = useCallback(async () => {
+        await authClient.signOut();
         setUser(null);
         router.push('/login');
-    };
+    }, [router]);
 
     const isAdmin = user?.role === 'ADMIN';
 
     return (
-        <AuthContext.Provider value={{ user, loading, signUp, verifySignupOtp, signIn, signOut, isAdmin, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, isAdmin, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

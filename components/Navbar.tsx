@@ -4,33 +4,21 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
-import { ShoppingCart, User, LogOut, LayoutDashboard, Menu, Search, X, Sparkles, ArrowRight } from 'lucide-react';
+import { ShoppingCart, User, LayoutDashboard, Menu, Search, X, Sparkles, Heart, Home, Store, Info, Phone } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValueEvent, useScroll } from 'framer-motion';
 import { Drawer, DrawerHeader, DrawerBody } from '@/components/ui/drawer';
-import { Button } from '@/components/ui/button';
 
-const jewelleryCollections = [
-    'Rings',
-    'Earrings',
-    'Necklaces',
-    'Bracelets',
-    'Mangalsutra',
-    'Wedding Collection',
-];
+const quickSearches = ['Rings', 'Bracelets', 'Wedding Collection', 'Daily Wear', 'Necklaces', 'Earrings'];
 
-const quickSearches = ['Rings', 'Bracelets', 'Wedding Collection', 'Daily Wear'];
-
-type NavLink = { name: string; href: string };
+type NavLink = { name: string; href: string; icon: React.ReactNode };
 
 const desktopNavLinks: NavLink[] = [
-    { name: 'Home', href: '/' },
-    { name: 'Shop', href: '/shop' },
-    { name: 'Collections', href: '/shop' },
-    { name: 'About', href: '/about' },
-    { name: 'Our Story', href: '/our-story' },
-    { name: 'Contact', href: '/contact' },
+    { name: 'Home', href: '/', icon: <Home size={16} /> },
+    { name: 'Shop', href: '/shop', icon: <Store size={16} /> },
+    { name: 'About', href: '/about', icon: <Info size={16} /> },
+    { name: 'Contact', href: '/contact', icon: <Phone size={16} /> },
 ];
 
 function useActiveState(pathname: string) {
@@ -40,24 +28,9 @@ function useActiveState(pathname: string) {
     };
 }
 
-function Badge({ children, variant }: { children: React.ReactNode; variant: 'gold' }) {
-    const isGold = variant === 'gold';
-    return (
-        <span
-            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                isGold
-                    ? 'bg-gradient-to-r from-[#d4af37] to-[#f2d06b] text-primary'
-                    : 'bg-primary text-white'
-            }`}
-        >
-            {children}
-        </span>
-    );
-}
-
 export default function Navbar() {
     const { user, signOut, isAdmin } = useAuth();
-    const { cartCount } = useCart();
+    const { cartCount, isHydrated } = useCart();
     const pathname = usePathname();
     const isActive = useActiveState(pathname);
 
@@ -74,10 +47,12 @@ export default function Navbar() {
     ];
 
     useEffect(() => {
-        const updateScroll = () => setScrolled(window.scrollY > 50);
-        updateScroll();
-        window.addEventListener('scroll', updateScroll, { passive: true });
-        return () => window.removeEventListener('scroll', updateScroll);
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 20);
+        };
+        handleScroll();
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     useEffect(() => {
@@ -90,31 +65,6 @@ export default function Navbar() {
     const isHome = pathname === '/';
     const isTransparent = isHome && !scrolled;
 
-    const navClasses = isTransparent
-        ? 'bg-transparent text-white border-b border-white/10'
-        : 'border-b border-border bg-white/80 text-primary shadow-md backdrop-blur-2xl saturate-180';
-
-    const linkBase =
-        'text-sm font-semibold tracking-wide transition-colors duration-300';
-    const linkColor = isTransparent
-        ? 'text-white/90 hover:text-white'
-        : 'text-text-secondary hover:text-accent';
-    const activeLinkColor = isTransparent
-        ? 'text-white after:scale-x-100'
-        : 'text-accent after:scale-x-100';
-
-    const navLinkClass = (href: string) =>
-        `${linkBase} ${isActive(href) ? activeLinkColor : linkColor} relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-full after:origin-left after:scale-x-0 after:bg-luxury-gold after:transition-transform after:duration-300 hover:after:scale-x-100`;
-
-    const iconBtnClass = (solid?: boolean) =>
-        `rounded-full p-2.5 transition-all duration-300 ${
-            isTransparent
-                ? 'bg-white/10 text-white hover:bg-white/20'
-                : solid
-                ? 'bg-primary text-white hover:bg-accent hover:text-primary shadow-soft'
-                : 'bg-surface text-primary shadow-soft hover:text-accent hover:shadow-glass'
-        }`;
-
     const filteredSuggestions = useMemo(() => {
         const query = searchValue.toLowerCase().trim();
         if (!query) return quickSearches;
@@ -123,294 +73,325 @@ export default function Navbar() {
 
     return (
         <>
-            {/* Premium Announcement Bar */}
-            <div className="fixed inset-x-0 top-0 z-[60] bg-primary text-white">
-                <div className="mx-auto flex h-10 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-                    <div className="flex-1 text-center">
-                        <AnimatePresence mode="wait">
-                            <motion.p
-                                key={announcementIndex}
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -8 }}
-                                transition={{ duration: 0.5 }}
-                                className="text-xs font-semibold tracking-wide"
-                            >
-                                <Sparkles size={12} className="inline-block mr-1.5 text-luxury-gold" />
-                                {announcements[announcementIndex]}
-                            </motion.p>
-                        </AnimatePresence>
-                    </div>
+            {/* Announcement Bar */}
+            <div
+                className={`fixed inset-x-0 top-0 z-[60] transition-all duration-500 ${
+                    isTransparent
+                        ? 'bg-black/30 backdrop-blur-sm'
+                        : 'bg-[#111111]'
+                }`}
+            >
+                <div className="mx-auto flex h-8 max-w-7xl items-center justify-center px-4">
+                    <AnimatePresence mode="wait">
+                        <motion.p
+                            key={announcementIndex}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ duration: 0.4 }}
+                            className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-white/90"
+                        >
+                            <Sparkles size={11} className="text-[#d4af37]" />
+                            {announcements[announcementIndex]}
+                        </motion.p>
+                    </AnimatePresence>
                 </div>
             </div>
 
-            <nav
-                className={`fixed inset-x-0 z-50 transition-all duration-500 ${navClasses}`}
-                style={{ top: '40px' }}
+            {/* Main Nav */}
+            <header
+                className={`fixed inset-x-0 z-50 transition-all duration-500 ease-out`}
+                style={{ top: '32px' }}
             >
-                <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-                    <Link href="/" className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 shadow-soft overflow-hidden">
-                            <Image src="/logo.png" alt="Tuhfina Creation logo" width={40} height={40} className="rounded-full object-cover" />
-                        </div>
-                        <div>
-                            <p className={`text-[10px] font-bold uppercase tracking-[0.3em] ${isTransparent ? 'text-white/80' : 'text-primary/70'}`}>Luxury</p>
-                            <h1 className={`text-base font-serif font-bold tracking-wider ${isTransparent ? 'text-white' : 'text-primary'}`}>Tuhfina Creation</h1>
-                        </div>
-                    </Link>
-
-                    <div className="hidden items-center gap-7 md:flex">
-                        {desktopNavLinks.map((link) => (
-                            <Link key={link.name} href={link.href} className={navLinkClass(link.href)}>
-                                {link.name}
-                            </Link>
-                        ))}
-
-                        {/* Mega Menu Dropdown Group */}
-                        <div className="group relative">
-                            <button
-                                className={`inline-flex items-center gap-1 ${navLinkClass('/shop')}`}
-                                aria-haspopup="true"
-                            >
-                                Jewellery
-                                <span className="text-[10px] opacity-60 transition-transform duration-300 group-hover:rotate-180">▼</span>
-                            </button>
-
-                            {/* Mega Menu Container */}
-                            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-4 w-[600px] rounded-[24px] border border-border bg-white p-6 opacity-0 shadow-premium transition-all duration-300 group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 z-50">
-                                <div className="grid grid-cols-3 gap-6">
-                                    <div className="col-span-2">
-                                        <h4 className="text-xs font-bold uppercase tracking-wider text-accent mb-3">Categories</h4>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {jewelleryCollections.map((item) => (
-                                                <Link
-                                                    key={item}
-                                                    href={`/shop?category=${encodeURIComponent(item)}`}
-                                                    className="flex items-center justify-between rounded-xl px-4 py-2.5 text-sm text-text-secondary transition duration-200 hover:bg-accent/8 hover:text-accent hover:translate-x-1"
-                                                >
-                                                    <span>{item}</span>
-                                                    <ArrowRight size={14} className="opacity-0 -translate-x-2 transition-all group-hover:opacity-100 group-hover:translate-x-0" />
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="bg-luxury-warm/80 rounded-2xl p-4 flex flex-col justify-between border border-accent/10">
-                                        <div>
-                                            <Badge variant="gold">New Season</Badge>
-                                            <h5 className="mt-2 font-serif font-bold text-primary text-base mb-1">Luxury Gift Set</h5>
-                                            <p className="text-[11px] text-text-secondary leading-relaxed">Artisan handcrafted wedding collection designed for timeless beauty.</p>
-                                        </div>
-                                        <Link href="/shop" className="mt-4 text-xs font-bold text-accent inline-flex items-center gap-1 hover:underline">
-                                            Explore Now <ArrowRight size={12} />
-                                        </Link>
-                                    </div>
-                                </div>
+                <nav
+                    className={`transition-all duration-500 ease-out ${
+                        isTransparent
+                            ? 'bg-transparent'
+                            : 'bg-white/95 backdrop-blur-2xl shadow-[0_1px_20px_rgba(0,0,0,0.06)] border-b border-black/[0.04]'
+                    }`}
+                >
+                    <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+                        {/* Logo */}
+                        <Link href="/" className="flex items-center gap-2.5 shrink-0">
+                            <div className="relative h-9 w-9 overflow-hidden rounded-full border border-white/20 bg-white/10 shadow-sm">
+                                <Image
+                                    src="/logo.png"
+                                    alt="Tuhfina Creation"
+                                    fill
+                                    className="object-cover"
+                                    sizes="36px"
+                                />
                             </div>
-                        </div>
-
-                        {user && (
-                            isAdmin ? (
-                                <Link
-                                    href="/admin"
-                                    className={`flex items-center gap-2 ${navLinkClass('/admin')}`}
-                                >
-                                    <LayoutDashboard size={16} />
-                                    Admin
-                                </Link>
-                            ) : (
-                                <Link
-                                    href="/dashboard"
-                                    className={`flex items-center gap-2 ${navLinkClass('/dashboard')}`}
-                                >
-                                    <User size={16} />
-                                    Dashboard
-                                </Link>
-                            )
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setSearchOpen(true)}
-                            className={iconBtnClass()}
-                            aria-label="Open search"
-                        >
-                            <Search size={18} />
-                        </button>
-
-                        <Link
-                            href="/cart"
-                            className={iconBtnClass()}
-                            aria-label="View cart"
-                        >
-                            <ShoppingCart size={18} />
-                            {cartCount > 0 && (
-                                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-white shadow-glow">
-                                    {cartCount}
-                                </span>
-                            )}
+                            <div className="hidden sm:block">
+                                <p className={`text-[9px] font-bold uppercase tracking-[0.35em] transition-colors duration-500 ${isTransparent ? 'text-white/50' : 'text-[#111111]/40'}`}>
+                                    Luxury
+                                </p>
+                                <h1 className={`text-sm font-serif font-bold tracking-wider leading-tight transition-colors duration-500 ${isTransparent ? 'text-white' : 'text-[#111111]'}`}>
+                                    Tuhfina Creation
+                                </h1>
+                            </div>
                         </Link>
 
-                        {user ? (
+                        {/* Desktop Links */}
+                        <div className="hidden items-center gap-1 md:flex">
+                            {desktopNavLinks.map((link) => {
+                                const active = isActive(link.href);
+                                return (
+                                    <Link
+                                        key={link.name}
+                                        href={link.href}
+                                        className={`relative px-4 py-2 text-[13px] font-semibold tracking-wide transition-all duration-300 rounded-full ${
+                                            active
+                                                ? isTransparent
+                                                    ? 'text-white bg-white/15'
+                                                    : 'text-[#b76e79] bg-[#b76e79]/8'
+                                                : isTransparent
+                                                    ? 'text-white/70 hover:text-white hover:bg-white/10'
+                                                    : 'text-[#111111]/60 hover:text-[#111111] hover:bg-black/[0.03]'
+                                        }`}
+                                    >
+                                        {link.name}
+                                    </Link>
+                                );
+                            })}
+
+                            {/* Admin/Dashboard */}
+                            {user && (
+                                isAdmin ? (
+                                    <Link
+                                        href="/admin"
+                                        className={`flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold tracking-wide rounded-full transition-all duration-300 ${
+                                            isActive('/admin')
+                                                ? isTransparent ? 'text-white bg-white/15' : 'text-[#b76e79] bg-[#b76e79]/8'
+                                                : isTransparent ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-[#111111]/60 hover:text-[#111111] hover:bg-black/[0.03]'
+                                        }`}
+                                    >
+                                        <LayoutDashboard size={15} />
+                                        Admin
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        href="/dashboard"
+                                        className={`flex items-center gap-1.5 px-4 py-2 text-[13px] font-semibold tracking-wide rounded-full transition-all duration-300 ${
+                                            isActive('/dashboard')
+                                                ? isTransparent ? 'text-white bg-white/15' : 'text-[#b76e79] bg-[#b76e79]/8'
+                                                : isTransparent ? 'text-white/70 hover:text-white hover:bg-white/10' : 'text-[#111111]/60 hover:text-[#111111] hover:bg-black/[0.03]'
+                                        }`}
+                                    >
+                                        <User size={15} />
+                                        Dashboard
+                                    </Link>
+                                )
+                            )}
+                        </div>
+
+                        {/* Right Actions */}
+                        <div className="flex items-center gap-1">
+                            {/* Search */}
                             <button
-                                onClick={() => signOut()}
-                                className="hidden rounded-full px-5 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 md:inline-flex bg-surface text-primary shadow-soft hover:text-accent hover:shadow-glass"
+                                onClick={() => setSearchOpen(true)}
+                                className={`relative inline-flex items-center justify-center rounded-full p-2.5 transition-all duration-300 ${
+                                    isTransparent
+                                        ? 'text-white/70 hover:text-white hover:bg-white/10'
+                                        : 'text-[#111111]/50 hover:text-[#111111] hover:bg-black/[0.03]'
+                                }`}
+                                aria-label="Search"
                             >
-                                Logout
+                                <Search size={18} strokeWidth={2} />
                             </button>
-                        ) : (
+
+                            {/* Wishlist */}
                             <Link
-                                href="/login"
-                                className="hidden rounded-full px-5 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-300 md:inline-flex bg-primary text-white hover:bg-accent hover:text-primary"
+                                href="/dashboard"
+                                className={`relative inline-flex items-center justify-center rounded-full p-2.5 transition-all duration-300 ${
+                                    isTransparent
+                                        ? 'text-white/70 hover:text-white hover:bg-white/10'
+                                        : 'text-[#111111]/50 hover:text-[#111111] hover:bg-black/[0.03]'
+                                }`}
+                                aria-label="Wishlist"
                             >
-                                Login
+                                <Heart size={18} strokeWidth={2} />
                             </Link>
-                        )}
 
-                        <button
-                            onClick={() => setMobileMenuOpen(true)}
-                            className={`rounded-full p-2.5 md:hidden transition-all duration-300 ${isTransparent ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-surface text-primary shadow-soft'}`}
-                            aria-label="Open navigation"
-                        >
-                            <Menu size={18} />
-                        </button>
+                            {/* Cart */}
+                            <Link
+                                href="/cart"
+                                className={`relative inline-flex items-center justify-center rounded-full p-2.5 transition-all duration-300 ${
+                                    isTransparent
+                                        ? 'text-white/70 hover:text-white hover:bg-white/10'
+                                        : 'text-[#111111]/50 hover:text-[#111111] hover:bg-black/[0.03]'
+                                }`}
+                                aria-label="Cart"
+                            >
+                                <ShoppingCart size={18} strokeWidth={2} />
+                                {isHydrated && cartCount > 0 && (
+                                    <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#b76e79] px-1 text-[10px] font-bold text-white shadow-[0_2px_8px_rgba(183,110,121,0.5)] animate-scale-in z-10">
+                                        {cartCount > 99 ? '99+' : cartCount}
+                                    </span>
+                                )}
+                            </Link>
+
+                            {/* Login/Logout */}
+                            {user ? (
+                                <button
+                                    onClick={() => signOut()}
+                                    className={`hidden rounded-full px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 md:inline-flex ${
+                                        isTransparent
+                                            ? 'text-white/80 border border-white/20 hover:bg-white/10 hover:text-white'
+                                            : 'text-[#111111]/60 border border-black/[0.06] hover:border-[#b76e79]/30 hover:text-[#b76e79]'
+                                    }`}
+                                >
+                                    Logout
+                                </button>
+                            ) : (
+                                <Link
+                                    href="/login"
+                                    className={`hidden rounded-full px-5 py-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 md:inline-flex ${
+                                        isTransparent
+                                            ? 'bg-white text-[#111111] hover:bg-white/90 shadow-lg'
+                                            : 'bg-[#111111] text-white hover:bg-[#111111]/90 shadow-lg'
+                                    }`}
+                                >
+                                    Login
+                                </Link>
+                            )}
+
+                            {/* Mobile Menu */}
+                            <button
+                                onClick={() => setMobileMenuOpen(true)}
+                                className={`inline-flex items-center justify-center rounded-full p-2.5 md:hidden transition-all duration-300 ${
+                                    isTransparent
+                                        ? 'text-white/70 hover:text-white hover:bg-white/10'
+                                        : 'text-[#111111]/50 hover:text-[#111111] hover:bg-black/[0.03]'
+                                }`}
+                                aria-label="Menu"
+                            >
+                                <Menu size={20} />
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </nav>
+                </nav>
+            </header>
 
-            {/* Mobile Drawer Navigation */}
+            {/* Mobile Drawer */}
             <Drawer open={mobileMenuOpen} onOpenChange={setMobileMenuOpen} side="right">
                 <DrawerHeader onClose={() => setMobileMenuOpen(false)}>
-                    <div className="flex items-center gap-2">
-                        <Image src="/logo.png" alt="Tuhfina Creation logo" width={32} height={32} className="rounded-full object-cover" />
-                        <span className="font-serif font-bold text-primary">Tuhfina Creation</span>
+                    <div className="flex items-center gap-2.5">
+                        <div className="relative h-9 w-9 overflow-hidden rounded-full">
+                            <Image src="/logo.png" alt="Tuhfina Creation" fill className="object-cover" sizes="36px" />
+                        </div>
+                        <span className="font-serif font-bold text-[#111111]">Tuhfina Creation</span>
                     </div>
                 </DrawerHeader>
 
                 <DrawerBody className="flex flex-col justify-between py-6">
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1">
                         {desktopNavLinks.map((link) => (
                             <Link
                                 key={link.name}
                                 href={link.href}
                                 onClick={() => setMobileMenuOpen(false)}
-                                className={`rounded-2xl px-4 py-3 text-base font-semibold transition duration-200 ${
+                                className={`flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-semibold transition duration-200 ${
                                     isActive(link.href)
-                                        ? 'bg-accent/10 text-accent'
-                                        : 'text-primary hover:bg-accent/8 hover:text-accent'
+                                        ? 'bg-[#b76e79]/8 text-[#b76e79]'
+                                        : 'text-[#111111] hover:bg-black/[0.03] hover:text-[#b76e79]'
                                 }`}
                             >
+                                {link.icon}
                                 {link.name}
                             </Link>
                         ))}
-
-                        <div className="rounded-3xl border border-border bg-luxury-warm/40 p-4 mt-2">
-                            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-accent">
-                                <Sparkles size={14} /> Jewellery
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                {jewelleryCollections.map((item) => (
-                                    <Link
-                                        key={item}
-                                        href={`/shop?category=${encodeURIComponent(item)}`}
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="rounded-xl px-3 py-2 text-sm text-text-secondary hover:bg-accent/10 hover:text-accent transition duration-200"
-                                    >
-                                        {item}
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
 
                         {user && (
                             isAdmin ? (
                                 <Link
                                     href="/admin"
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="btn-outline-luxury flex items-center gap-2 mt-2"
+                                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-semibold text-[#111111] hover:bg-[#b76e79]/8 hover:text-[#b76e79] transition duration-200"
                                 >
-                                    <LayoutDashboard size={16} /> Admin Dashboard
+                                    <LayoutDashboard size={16} />
+                                    Admin Dashboard
                                 </Link>
                             ) : (
                                 <Link
                                     href="/dashboard"
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="btn-outline-luxury flex items-center gap-2 mt-2"
+                                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-semibold text-[#111111] hover:bg-[#b76e79]/8 hover:text-[#b76e79] transition duration-200"
                                 >
-                                    <User size={16} /> Customer Dashboard
+                                    <User size={16} />
+                                    My Dashboard
                                 </Link>
                             )
                         )}
                     </div>
 
-                    <div className="flex flex-col gap-3 pt-6 border-t border-border">
+                    <div className="flex flex-col gap-3 pt-6 border-t border-black/[0.06]">
                         {user ? (
-                            <Button
-                                variant="luxury"
+                            <button
                                 onClick={() => { signOut(); setMobileMenuOpen(false); }}
-                                className="w-full"
+                                className="w-full rounded-full bg-[#111111] px-6 py-3.5 text-[12px] font-bold uppercase tracking-wider text-white transition-all duration-300 hover:bg-[#111111]/90"
                             >
-                                Logout
-                            </Button>
+                                Sign Out
+                            </button>
                         ) : (
                             <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                                <Button variant="luxury" className="w-full">
-                                    Login
-                                </Button>
+                                <button className="w-full rounded-full bg-[#111111] px-6 py-3.5 text-[12px] font-bold uppercase tracking-wider text-white transition-all duration-300 hover:bg-[#111111]/90">
+                                    Sign In
+                                </button>
                             </Link>
                         )}
                     </div>
                 </DrawerBody>
             </Drawer>
 
-            {/* Premium Search Overlay */}
+            {/* Search Overlay */}
             <AnimatePresence>
                 {searchOpen && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] flex items-start justify-center bg-primary/40 px-4 py-16 backdrop-blur-md"
+                        className="fixed inset-0 z-[70] flex items-start justify-center bg-black/50 px-4 pt-[120px] backdrop-blur-sm"
+                        onClick={() => setSearchOpen(false)}
                     >
                         <motion.div
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 20, opacity: 0 }}
-                            className="w-full max-w-2xl rounded-[32px] border border-border bg-white p-6 shadow-premium"
+                            initial={{ y: 20, opacity: 0, scale: 0.98 }}
+                            animate={{ y: 0, opacity: 1, scale: 1 }}
+                            exit={{ y: 20, opacity: 0, scale: 0.98 }}
+                            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                            className="w-full max-w-xl rounded-[20px] border border-black/[0.06] bg-white p-5 shadow-[0_32px_90px_rgba(0,0,0,0.2)]"
+                            onClick={(e) => e.stopPropagation()}
                         >
                             <div className="mb-4 flex items-center justify-between">
-                                <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">Discover</p>
-                                    <h2 className="text-xl font-serif font-bold text-primary">Search our premium collections</h2>
-                                </div>
+                                <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#b76e79]">Search</p>
                                 <button
                                     onClick={() => setSearchOpen(false)}
-                                    className="rounded-full p-2 text-text-secondary hover:bg-accent/10 hover:text-accent"
+                                    className="rounded-full p-1.5 text-[#111111]/40 hover:bg-black/[0.04] hover:text-[#111111] transition-colors"
                                 >
-                                    <X size={18} />
+                                    <X size={16} />
                                 </button>
                             </div>
 
-                            <div className="flex items-center gap-3 rounded-full border border-border bg-surface px-4 py-3">
-                                <Search size={18} className="text-accent" />
+                            <div className="flex items-center gap-3 rounded-full border border-black/[0.08] bg-[#f9f9f9] px-4 py-3">
+                                <Search size={16} className="text-[#b76e79]" />
                                 <input
                                     value={searchValue}
                                     onChange={(e) => setSearchValue(e.target.value)}
                                     placeholder="Search rings, bracelets, gifts..."
-                                    className="w-full bg-transparent text-sm outline-none text-primary"
+                                    className="w-full bg-transparent text-sm outline-none text-[#111111] placeholder:text-[#111111]/30"
                                     autoFocus
                                 />
                             </div>
 
-                            <div className="mt-6">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mb-3">Quick Searches</p>
-                                <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="mt-4">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40 mb-2.5">Quick</p>
+                                <div className="flex flex-wrap gap-2">
                                     {filteredSuggestions.map((item) => (
                                         <Link
                                             key={item}
                                             href={`/shop?category=${encodeURIComponent(item)}`}
                                             onClick={() => setSearchOpen(false)}
-                                            className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text-secondary transition hover:border-accent hover:text-accent hover:bg-white duration-200"
+                                            className="rounded-full border border-black/[0.06] bg-[#f9f9f9] px-4 py-2 text-[13px] font-medium text-[#111111]/70 transition hover:border-[#b76e79]/30 hover:text-[#b76e79]"
                                         >
                                             {item}
                                         </Link>

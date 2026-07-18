@@ -24,7 +24,7 @@ function DashboardContent() {
 
     setLoading(true);
     try {
-      const userOrders = await orderService.getUserOrders(user.uid);
+      const userOrders = await orderService.getUserOrders(user.id);
       setOrders(userOrders);
     } catch (error) {
       console.error('Error loading orders:', error);

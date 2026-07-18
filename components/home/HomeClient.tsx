@@ -4,13 +4,16 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion, useInView } from 'framer-motion';
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { ArrowRight, Gem, ShieldCheck, Truck, Users, Play, Sparkles, Star, Instagram, Facebook, Youtube, Linkedin, Mail, Phone, MapPin, Clock, Heart, ShoppingCart, Eye, Award, TruckIcon, RefreshCcw, Headphones, PackageOpen } from 'lucide-react';
+import { ArrowRight, Gem, ShieldCheck, Truck, Users, Sparkles, Star, Instagram, Facebook, Youtube, Linkedin, Phone, Award, TruckIcon, RefreshCcw, Headphones, PackageOpen, Clock } from 'lucide-react';
 import { Product, Category, CategoryOffer, FestivalConfig } from '@/lib/types';
 import ProductCard from '@/components/cards/ProductCard';
 import SaleBanner from '@/components/SaleBanner';
 import { Badge } from '@/components/ui/badge';
-import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/toast';
+import PromoSlider from '@/components/home/PromoSlider';
+import BrowseByStyle from '@/components/home/BrowseByStyle';
+import PromotionalVideos from '@/components/home/PromotionalVideos';
+import FeaturedCategories from '@/components/home/FeaturedCategories';
 
 interface HomeClientProps {
     products: Product[];
@@ -153,18 +156,18 @@ function TestimonialCarousel() {
                         <div key={i} className="w-full flex-shrink-0 px-4">
                             <div className="glass-panel rounded-[28px] p-8 md:p-12 text-center">
                                 <div className="flex justify-center mb-6">
-                                    <div className="relative h-20 w-20 rounded-full overflow-hidden border-2 border-luxury-gold/40 shadow-premium">
+                                    <div className="relative h-20 w-20 rounded-full overflow-hidden border-2 border-[#d4af37]/40 shadow-premium">
                                         <Image src={t.image} alt={t.name} fill className="object-cover" />
                                     </div>
                                 </div>
                                 <div className="flex justify-center gap-1 mb-4">
                                     {Array.from({ length: t.rating }).map((_, idx) => (
-                                        <Star key={idx} size={18} className="fill-luxury-gold text-luxury-gold" />
+                                        <Star key={idx} size={18} className="fill-[#d4af37] text-[#d4af37]" />
                                     ))}
                                 </div>
-                                <p className="text-lg md:text-xl font-light text-primary/90 leading-relaxed mb-6 italic">&ldquo;{t.text}&rdquo;</p>
-                                <h4 className="font-serif font-bold text-primary text-lg">{t.name}</h4>
-                                <p className="text-sm text-text-secondary">{t.role}</p>
+                                <p className="text-lg md:text-xl font-light text-[#111]/90 leading-relaxed mb-6 italic">&ldquo;{t.text}&rdquo;</p>
+                                <h4 className="font-serif font-bold text-[#111] text-lg">{t.name}</h4>
+                                <p className="text-sm text-[#666]">{t.role}</p>
                             </div>
                         </div>
                     ))}
@@ -176,7 +179,7 @@ function TestimonialCarousel() {
                     <button
                         key={i}
                         onClick={() => setCurrent(i)}
-                        className={`h-2.5 rounded-full transition-all duration-300 ${i === current ? 'w-8 bg-luxury-gold' : 'w-2.5 bg-luxury-gold/30 hover:bg-luxury-gold/60'}`}
+                        className={`h-2.5 rounded-full transition-all duration-300 ${i === current ? 'w-8 bg-[#d4af37]' : 'w-2.5 bg-[#d4af37]/30 hover:bg-[#d4af37]/60'}`}
                         aria-label={`Go to testimonial ${i + 1}`}
                     />
                 ))}
@@ -211,16 +214,20 @@ function NewsletterSection() {
     };
 
     return (
-        <section className="section-padding bg-primary relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #D4AF37 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-            <div className="section-shell relative z-10">
+        <section className="relative overflow-hidden bg-[#111111]">
+            <div
+                className="absolute inset-0 opacity-[0.04]"
+                style={{ backgroundImage: 'radial-gradient(circle, #D4AF37 1px, transparent 1px)', backgroundSize: '24px 24px' }}
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_rgba(212,175,55,0.1),_transparent_50%)]" />
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
                 <div className="max-w-3xl mx-auto text-center">
                     <FadeInSection>
                         <Badge variant="gold" className="mb-4">Newsletter</Badge>
                         <h2 className="text-3xl sm:text-5xl font-serif font-bold text-white tracking-tight mb-4">
                             Stay Updated
                         </h2>
-                        <p className="text-white/70 text-base md:text-lg mb-8">
+                        <p className="text-white/60 text-base md:text-lg mb-8">
                             Get 10% off your first order when you subscribe to our newsletter.
                         </p>
                     </FadeInSection>
@@ -232,12 +239,13 @@ function NewsletterSection() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="Enter your email"
-                                className="flex-1 rounded-full border border-white/20 bg-white/10 px-6 py-4 text-sm text-white placeholder-white/60 outline-none backdrop-blur-md focus:border-luxury-gold focus:ring-2 focus:ring-luxury-gold/30"
+                                className="flex-1 rounded-full border border-white/15 bg-white/5 px-6 py-4 text-sm text-white placeholder-white/40 outline-none backdrop-blur-md focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/20 transition-all duration-300"
                             />
                             <button
                                 type="submit"
                                 disabled={status === 'loading'}
-                                className="btn-gold px-8 py-4 rounded-full text-sm font-bold uppercase tracking-wider hover:scale-105 transition duration-300 disabled:opacity-50"
+                                className="rounded-full px-8 py-4 text-sm font-bold uppercase tracking-wider text-[#111] shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-50"
+                                style={{ background: 'linear-gradient(135deg, #d4af37 0%, #f2d06b 50%, #d4af37 100%)' }}
                             >
                                 {status === 'loading' ? 'Subscribing...' : 'Subscribe'}
                             </button>
@@ -247,7 +255,7 @@ function NewsletterSection() {
                             <motion.p
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className={`mt-4 text-sm ${status === 'success' ? 'text-green-300' : 'text-red-300'}`}
+                                className={`mt-4 text-sm ${status === 'success' ? 'text-green-400' : 'text-red-400'}`}
                             >
                                 {message}
                             </motion.p>
@@ -264,8 +272,8 @@ function InstagramFeed() {
         <section className="section-padding bg-background">
             <div className="section-shell">
                 <FadeInSection className="mb-12 text-center">
-                    <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-3">@tuhfinacreation</p>
-                    <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Follow Our Journey</h2>
+                    <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#d4af37] mb-3">@tuhfinacreation</p>
+                    <h2 className="text-3xl font-serif font-bold text-[#111] sm:text-4xl">Follow Our Journey</h2>
                 </FadeInSection>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -296,7 +304,7 @@ function InstagramFeed() {
                                 href={social.href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-6 py-3 text-sm font-semibold text-text-secondary shadow-soft transition hover:border-luxury-gold hover:text-luxury-gold"
+                                className="inline-flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-6 py-3 text-sm font-semibold text-[#666] shadow-soft transition hover:border-[#d4af37] hover:text-[#d4af37]"
                                 whileHover={{ y: -2 }}
                             >
                                 <Icon size={18} />
@@ -307,60 +315,6 @@ function InstagramFeed() {
                 </FadeInSection>
             </div>
         </section>
-    );
-}
-
-function PromoBanners() {
-    const banners = [
-        {
-            image: '/photos/nacklace.jpg',
-            title: 'Luxury Jewellery Collection',
-            subtitle: 'Discover timeless elegance',
-            cta: 'Shop Now',
-            href: '/shop',
-        },
-        {
-            image: '/photos/wedding_ring.jpg',
-            title: 'Wedding Collection',
-            subtitle: 'Bridal treasures for your special day',
-            cta: 'Explore',
-            href: '/shop',
-        },
-        {
-            image: '/photos/ring.jpg',
-            title: 'Flat 20% Off',
-            subtitle: 'Limited time offer on selected items',
-            cta: 'Grab Deal',
-            href: '/shop',
-        },
-    ];
-
-    return (
-        <div className="space-y-8">
-            {banners.map((banner, i) => (
-                <FadeInSection key={banner.title} delay={i * 0.1}>
-                    <motion.div
-                        className="relative h-64 md:h-80 overflow-hidden rounded-[28px]"
-                        whileHover={{ scale: 1.01 }}
-                        transition={{ duration: 0.4 }}
-                    >
-                        <Image src={banner.image} alt={banner.title} fill className="object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="section-shell relative z-10">
-                                <div className="max-w-xl">
-                                    <h3 className="text-2xl md:text-4xl font-serif font-bold text-white mb-3">{banner.title}</h3>
-                                    <p className="text-white/80 text-sm md:text-base mb-6">{banner.subtitle}</p>
-                                    <Link href={banner.href} className="btn-gold px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider hover:scale-105 transition duration-300">
-                                        {banner.cta}
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                </FadeInSection>
-            ))}
-        </div>
     );
 }
 
@@ -386,19 +340,22 @@ export default function HomeClient({ products, categories, settings, festivalCon
             {festivalConfig && <SaleBanner config={festivalConfig} />}
 
             {!festivalConfig?.active && isSaleActive && (
-                <div className="border-b border-border bg-primary px-4 py-3 text-center text-sm text-white">
+                <div className="border-b border-[#e5e5e5] bg-[#111111] px-4 py-3 text-center text-sm">
                     <div className="section-shell flex flex-col items-center justify-center gap-3 sm:flex-row">
-                        <span className="flex items-center gap-2 font-medium">
-                            <Sparkles size={14} className="text-luxury-gold" />
+                        <span className="flex items-center gap-2 font-medium text-white/90">
+                            <Sparkles size={14} className="text-[#d4af37]" />
                             {saleMessage}
                         </span>
-                        <Link href="/shop" className="rounded-full bg-white px-5 py-1.5 text-xs font-bold uppercase tracking-wider text-primary hover:bg-luxury-cream transition duration-300">
+                        <Link href="/shop" className="rounded-full bg-white px-5 py-1.5 text-xs font-bold uppercase tracking-wider text-[#111] hover:bg-[#f8e1e7] transition duration-300">
                             Shop Now
                         </Link>
                     </div>
                 </div>
             )}
 
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 1: HERO
+            ═══════════════════════════════════════════════════════════════ */}
             <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 z-0">
                     <HeroVideoSlider />
@@ -416,9 +373,9 @@ export default function HomeClient({ products, categories, settings, festivalCon
                             initial={{ opacity: 0, y: 16 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.8, delay: 0.2 }}
-                            className="mb-8 inline-flex items-center gap-2 rounded-full border border-luxury-gold/30 bg-white/10 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.2em] text-luxury-gold backdrop-blur-md"
+                            className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#d4af37]/30 bg-white/10 px-5 py-2.5 text-xs font-bold uppercase tracking-[0.2em] text-[#d4af37] backdrop-blur-md"
                         >
-                            <Gem size={14} className="text-luxury-gold" />
+                            <Gem size={14} className="text-[#d4af37]" />
                             100% Handcrafted
                         </motion.div>
 
@@ -459,7 +416,10 @@ export default function HomeClient({ products, categories, settings, festivalCon
                 </motion.div>
             </section>
 
-            <section className="relative bg-luxury-black py-10 border-b border-white/5">
+            {/* ═══════════════════════════════════════════════════════════════
+                STATS BAR
+            ═══════════════════════════════════════════════════════════════ */}
+            <section className="relative bg-[#111111] py-10 border-b border-white/5">
                 <div className="section-shell px-4 sm:px-6 lg:px-10 xl:px-16">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
                         {stats.map((stat, i) => (
@@ -469,73 +429,28 @@ export default function HomeClient({ products, categories, settings, festivalCon
                 </div>
             </section>
 
-            <section className="section-padding bg-luxury-warm/20 border-y border-border">
-                <div className="section-shell">
-                    <FadeInSection className="mb-12 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                        <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold">Browse by Style</p>
-                            <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Our Collections</h2>
-                        </div>
-                        <Link href="/shop" className="text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-luxury-gold transition duration-300 inline-flex items-center gap-1.5">
-                            View all <ArrowRight size={14} />
-                        </Link>
-                    </FadeInSection>
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 2: PROMOTIONAL SLIDER
+            ═══════════════════════════════════════════════════════════════ */}
+            <PromoSlider />
 
-                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 auto-rows-[280px]">
-                        {displayCategories.slice(0, 4).map((cat, i) => (
-                            <FadeInSection
-                                key={cat.name}
-                                delay={i * 0.1}
-                                className={i === 0 ? 'sm:col-span-2 lg:col-span-2' : ''}
-                            >
-                                <div className="group relative h-full rounded-[28px] overflow-hidden border border-border bg-surface transition-all duration-500 hover:shadow-[0_28px_70px_rgba(17,17,17,0.14)] hover:border-luxury-gold/20">
-                                    {cat.image ? (
-                                        <div className="absolute inset-0 img-zoom">
-                                            <Image
-                                                src={cat.image}
-                                                alt={cat.name}
-                                                fill
-                                                className="object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                                                sizes="(max-width: 768px) 100vw, 50vw"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="absolute inset-0 bg-gradient-to-br from-luxury-gold/10 via-luxury-cream/40 to-accent/10 flex items-center justify-center">
-                                            <span className="text-7xl font-serif font-bold text-luxury-gold/30 select-none">
-                                                {cat.name.charAt(0)}
-                                            </span>
-                                        </div>
-                                    )}
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 3: FEATURED CATEGORIES
+            ═══════════════════════════════════════════════════════════════ */}
+            <FeaturedCategories />
 
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                                    <div className="absolute bottom-0 left-0 right-0 p-7 translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500">
-                                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-luxury-gold mb-1">{displayCategories.length} items</p>
-                                        <h3 className="text-xl font-serif font-bold text-white">{cat.name}</h3>
-                                        {cat.description && (
-                                            <p className="text-sm text-white/70 mt-1">{cat.description}</p>
-                                        )}
-                                    </div>
-
-                                    <div className="absolute bottom-0 left-0 right-0 p-7 bg-gradient-to-t from-black/50 to-transparent group-hover:opacity-0 transition-opacity duration-500">
-                                        <h3 className="text-lg font-serif font-bold text-white">{cat.name}</h3>
-                                    </div>
-                                </div>
-                            </FadeInSection>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 4: NEW ARRIVALS
+            ═══════════════════════════════════════════════════════════════ */}
             {newArrivals.length > 0 && (
-                <section className="section-padding">
+                <section className="section-padding bg-[#fdf8f3]">
                     <div className="section-shell">
                         <FadeInSection className="mb-12 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold">Just Landed</p>
-                                <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">New Arrivals</h2>
+                                <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#d4af37]">Just Landed</p>
+                                <h2 className="text-3xl font-serif font-bold text-[#111] sm:text-4xl">New Arrivals</h2>
                             </div>
-                            <Link href="/shop?sort=newest" className="text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-luxury-gold transition duration-300 inline-flex items-center gap-1.5">
+                            <Link href="/shop?sort=newest" className="text-xs font-bold uppercase tracking-wider text-[#666] hover:text-[#b76e79] transition duration-300 inline-flex items-center gap-1.5">
                                 View all <ArrowRight size={14} />
                             </Link>
                         </FadeInSection>
@@ -551,39 +466,18 @@ export default function HomeClient({ products, categories, settings, festivalCon
                 </section>
             )}
 
-            <section className="relative overflow-hidden bg-primary py-24 text-white">
-                <div
-                    className="absolute inset-0 opacity-[0.06]"
-                    style={{
-                        backgroundImage: 'radial-gradient(circle, #D4AF37 1px, transparent 1px)',
-                        backgroundSize: '24px 24px',
-                    }}
-                />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,_rgba(212,175,55,0.15),_transparent_50%)]" />
-
-                <FadeInSection className="section-shell relative z-10 px-4 sm:px-6 lg:px-10 xl:px-16 text-center max-w-3xl">
-                    <Badge variant="gold" className="mb-4">Featured Collection</Badge>
-                    <h2 className="font-serif text-3xl sm:text-5xl font-bold tracking-tight text-white mb-6">
-                        Customise your luxury keepsakes
-                    </h2>
-                    <p className="text-white/70 text-base leading-relaxed mb-8">
-                        Whether it is engraving a special date or uploading an image for customized earrings and frames, our master craftsmen bring your personal stories to life with meticulous detailing.
-                    </p>
-                    <Link href="/shop" className="btn-gold px-8 py-3.5 text-xs uppercase font-bold tracking-wider rounded-full hover:scale-105 transition duration-300">
-                        Start Customising
-                    </Link>
-                </FadeInSection>
-            </section>
-
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 5: BEST SELLERS
+            ═══════════════════════════════════════════════════════════════ */}
             {bestSellers.length > 0 && (
-                <section className="section-padding bg-luxury-warm/10">
+                <section className="section-padding bg-white">
                     <div className="section-shell">
                         <FadeInSection className="mb-12 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold">Customer Favourites</p>
-                                <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Best Sellers</h2>
+                                <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#d4af37]">Customer Favourites</p>
+                                <h2 className="text-3xl font-serif font-bold text-[#111] sm:text-4xl">Best Sellers</h2>
                             </div>
-                            <Link href="/shop" className="text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-luxury-gold transition duration-300 inline-flex items-center gap-1.5">
+                            <Link href="/shop" className="text-xs font-bold uppercase tracking-wider text-[#666] hover:text-[#b76e79] transition duration-300 inline-flex items-center gap-1.5">
                                 Shop best sellers <ArrowRight size={14} />
                             </Link>
                         </FadeInSection>
@@ -599,23 +493,34 @@ export default function HomeClient({ products, categories, settings, festivalCon
                 </section>
             )}
 
-            <PromoBanners />
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 6: BROWSE BY STYLE (Floating Cards)
+            ═══════════════════════════════════════════════════════════════ */}
+            <BrowseByStyle />
 
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 7: PROMOTIONAL VIDEOS
+            ═══════════════════════════════════════════════════════════════ */}
+            <PromotionalVideos />
+
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 8: TRENDING PRODUCTS
+            ═══════════════════════════════════════════════════════════════ */}
             {trendingProducts.length > 0 && (
-                <section className="section-padding">
+                <section className="section-padding bg-[#fdf8f3]">
                     <div className="section-shell">
                         <FadeInSection className="mb-12 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold">Trending Now</p>
-                                <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Timeless Favourites</h2>
+                                <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#d4af37]">Trending Now</p>
+                                <h2 className="text-3xl font-serif font-bold text-[#111] sm:text-4xl">Timeless Favourites</h2>
                             </div>
-                            <Link href="/shop" className="text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-luxury-gold transition duration-300 inline-flex items-center gap-1.5">
+                            <Link href="/shop" className="text-xs font-bold uppercase tracking-wider text-[#666] hover:text-[#b76e79] transition duration-300 inline-flex items-center gap-1.5">
                                 Shop all products <ArrowRight size={14} />
                             </Link>
                         </FadeInSection>
 
                         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-                            {trendingProducts.map((product, i) => (
+                            {trendingProducts.slice(0, 4).map((product, i) => (
                                 <FadeInSection key={product.id} delay={i * 0.08}>
                                     <ProductCard product={product} categoryOffers={categoryOffers} festivalConfig={festivalConfig} />
                                 </FadeInSection>
@@ -625,56 +530,14 @@ export default function HomeClient({ products, categories, settings, festivalCon
                 </section>
             )}
 
-            <section className="section-padding bg-luxury-warm/20 border-y border-border">
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 9: TRUST SIGNALS
+            ═══════════════════════════════════════════════════════════════ */}
+            <section className="section-padding bg-white">
                 <div className="section-shell">
                     <FadeInSection className="mb-12 text-center">
-                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-3">Curated For You</p>
-                        <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Featured Categories</h2>
-                    </FadeInSection>
-
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-                        {['New Arrivals', 'Best Sellers', 'Jewellery', 'Artificial Flowers', 'Customized Rings', 'Earrings', 'Necklaces', 'Bracelets', 'Gift Hampers', 'Home Decor'].map((cat, i) => {
-                            const imageMap: Record<string, string> = {
-                                'New Arrivals': '/photos/ring1.jpg',
-                                'Best Sellers': '/photos/nacklace.jpg',
-                                'Jewellery': '/photos/earing.jpg',
-                                'Artificial Flowers': '/photos/earing_nacklace.jpg',
-                                'Customized Rings': '/photos/wedding_ring.jpg',
-                                'Earrings': '/photos/earing1.jpg',
-                                'Necklaces': '/photos/naclace2.jpg',
-                                'Bracelets': '/photos/bracelet1.jpg',
-                                'Gift Hampers': '/photos/ring_nacklace.jpg',
-                                'Home Decor': '/photos/men_bracelet.jpg',
-                            };
-                            return (
-                                <FadeInSection key={cat} delay={i * 0.06}>
-                                    <Link href={`/shop?category=${encodeURIComponent(cat)}`} className="group block h-full">
-                                        <div className="relative h-48 md:h-56 overflow-hidden rounded-[22px] border border-border bg-surface transition-all duration-500 hover:shadow-premium hover:border-luxury-gold/30">
-                                            <div className="absolute inset-0 img-zoom">
-                                                <Image src={imageMap[cat] || '/photos/ring.jpg'} alt={cat} fill className="object-cover transition-transform duration-700 group-hover:scale-110" sizes="(max-width: 768px) 50vw, 20vw" />
-                                            </div>
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                                            <div className="absolute inset-x-0 bottom-0 p-5">
-                                                <h3 className="font-serif text-base font-bold text-white mb-1">{cat}</h3>
-                                                <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-luxury-gold">
-                                                    <span>Shop Now</span>
-                                                    <ArrowRight size={12} className="transition-transform duration-300 group-hover:translate-x-1" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Link>
-                                </FadeInSection>
-                            );
-                        })}
-                    </div>
-                </div>
-            </section>
-
-            <section className="section-padding">
-                <div className="section-shell">
-                    <FadeInSection className="mb-12 text-center">
-                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-3">Why Choose Us</p>
-                        <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Trust Signals</h2>
+                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#d4af37] mb-3">Why Choose Us</p>
+                        <h2 className="text-3xl font-serif font-bold text-[#111] sm:text-4xl">Trust Signals</h2>
                     </FadeInSection>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -683,14 +546,14 @@ export default function HomeClient({ products, categories, settings, festivalCon
                             return (
                                 <FadeInSection key={item.title} delay={i * 0.08}>
                                     <motion.div
-                                        className="h-full rounded-[22px] border border-border bg-white p-6 text-center shadow-soft transition-all duration-300 hover:shadow-premium hover:border-luxury-gold/30 hover:-translate-y-1"
+                                        className="h-full rounded-[22px] border border-[#e5e5e5] bg-white p-6 text-center shadow-soft transition-all duration-300 hover:shadow-premium hover:border-[#d4af37]/20 hover:-translate-y-1"
                                         whileHover={{ y: -4 }}
                                     >
-                                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-luxury-gold/10 text-luxury-gold border border-luxury-gold/10">
+                                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#d4af37]/8 text-[#d4af37] border border-[#d4af37]/10">
                                             <Icon size={26} />
                                         </div>
-                                        <h3 className="font-serif font-bold text-primary mb-1">{item.title}</h3>
-                                        <p className="text-xs text-text-secondary leading-relaxed">{item.desc}</p>
+                                        <h3 className="font-serif font-bold text-[#111] mb-1">{item.title}</h3>
+                                        <p className="text-xs text-[#666] leading-relaxed">{item.desc}</p>
                                     </motion.div>
                                 </FadeInSection>
                             );
@@ -699,43 +562,29 @@ export default function HomeClient({ products, categories, settings, festivalCon
                 </div>
             </section>
 
-            <section className="section-padding bg-luxury-warm/10">
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 10: TESTIMONIALS
+            ═══════════════════════════════════════════════════════════════ */}
+            <section className="section-padding bg-[#fdf8f3]">
                 <div className="section-shell">
                     <FadeInSection className="mb-12 text-center">
-                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold mb-3">Testimonials</p>
-                        <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">What Our Customers Say</h2>
+                        <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#d4af37] mb-3">Testimonials</p>
+                        <h2 className="text-3xl font-serif font-bold text-[#111] sm:text-4xl">What Our Customers Say</h2>
                     </FadeInSection>
 
                     <TestimonialCarousel />
                 </div>
             </section>
 
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 11: NEWSLETTER
+            ═══════════════════════════════════════════════════════════════ */}
             <NewsletterSection />
+
+            {/* ═══════════════════════════════════════════════════════════════
+                SECTION 12: INSTAGRAM FEED
+            ═══════════════════════════════════════════════════════════════ */}
             <InstagramFeed />
-
-            {products.length > 0 && (
-                <section className="section-padding">
-                    <div className="section-shell">
-                        <FadeInSection className="mb-12 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-[0.3em] text-luxury-gold">Trending Now</p>
-                                <h2 className="text-3xl font-serif font-bold text-primary sm:text-4xl">Trending Products</h2>
-                            </div>
-                            <Link href="/shop" className="text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-luxury-gold transition duration-300 inline-flex items-center gap-1.5">
-                                View all <ArrowRight size={14} />
-                            </Link>
-                        </FadeInSection>
-
-                        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-                            {trendingProducts.map((product, i) => (
-                                <FadeInSection key={product.id} delay={i * 0.08}>
-                                    <ProductCard product={product} categoryOffers={categoryOffers} festivalConfig={festivalConfig} />
-                                </FadeInSection>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            )}
         </div>
     );
 }
@@ -752,7 +601,7 @@ function StatItem({ stat, index }: { stat: typeof stats[number]; index: number }
             transition={{ duration: 0.6, delay: index * 0.1 }}
             className="flex items-center gap-4 justify-center"
         >
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/5 text-luxury-gold border border-luxury-gold/10">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-white/5 text-[#d4af37] border border-[#d4af37]/10">
                 <Icon size={22} />
             </div>
             <div>

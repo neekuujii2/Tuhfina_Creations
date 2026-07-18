@@ -2,6 +2,9 @@
 const nextConfig = {
   output: 'standalone',
   staticPageGenerationTimeout: 300,
+  experimental: {
+    serverComponentsExternalPackages: ['mongodb', 'mongoose', 'firebase-admin', 'nodemailer', 'pdfkit', 'razorpay', 'bcryptjs'],
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],

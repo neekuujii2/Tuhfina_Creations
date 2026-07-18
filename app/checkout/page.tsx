@@ -198,7 +198,7 @@ export default function CheckoutPage() {
         try {
             // 0. Create Pending Order in Firestore
             const orderData: Omit<Order, 'id' | 'createdAt'> = {
-                userId: user.uid,
+                userId: user.id,
                 userEmail: user.email!,
                 items: cartItems.map(item => {
                     const status = resolveProductPrice(item.product, categoryOffers, festivalConfig);

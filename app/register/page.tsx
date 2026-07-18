@@ -6,7 +6,7 @@ import { useState, FormEvent, Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserPlus, AlertCircle, Mail, Key, ArrowRight, RefreshCcw, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, AlertCircle, Mail, Key, ArrowRight, RefreshCcw, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 function RegisterContent() {
     const [email, setEmail] = useState('');
@@ -15,11 +15,11 @@ function RegisterContent() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [step, setStep] = useState<'form' | 'verify-email'>('form');
 
     const { signUp, user, loading: authLoading } = useAuth();
     const router = useRouter();
 
-    // Redirect if already logged in
     useEffect(() => {
         if (!authLoading && user) {
             router.replace('/shop');
@@ -35,11 +35,16 @@ function RegisterContent() {
             return;
         }
 
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters');
+            return;
+        }
+
         setLoading(true);
 
         try {
             await signUp(email, password, confirmPassword);
-            router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+            setStep('verify-email');
         } catch (err: any) {
             setError(err.message || 'Signup failed. Please try again.');
         } finally {
@@ -49,101 +54,140 @@ function RegisterContent() {
 
     if (authLoading || user) {
         return (
-            <div className="min-h-screen bg-luxury-cream flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-luxury-gold"></div>
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#b76e79] border-t-transparent" />
+            </div>
+        );
+    }
+
+    if (step === 'verify-email') {
+        return (
+            <div className="min-h-screen bg-[#f9f9f9] flex items-center justify-center px-4 py-12">
+                <div className="w-full max-w-[420px]">
+                    <div className="bg-white rounded-[20px] border border-black/[0.04] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.06)] text-center">
+                        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-50">
+                            <CheckCircle className="text-green-500" size={32} />
+                        </div>
+                        <h2 className="text-2xl font-serif font-bold text-[#111111] mb-3">
+                            Check Your Email
+                        </h2>
+                        <p className="text-[#111111]/50 text-sm mb-4">
+                            We&apos;ve sent a verification link to
+                        </p>
+                        <p className="font-semibold text-[#111111] mb-6 bg-[#f9f9f9] rounded-full px-4 py-2.5 inline-block text-sm">
+                            {email}
+                        </p>
+                        <p className="text-[13px] text-[#111111]/50 mb-8 leading-relaxed">
+                            Click the link in the email to verify your account. The link expires in 1 hour.
+                        </p>
+
+                        <div className="space-y-3">
+                            <Link
+                                href="/login"
+                                className="w-full flex items-center justify-center gap-2 rounded-full bg-[#111111] px-6 py-3.5 text-[13px] font-bold uppercase tracking-wider text-white transition-all duration-300 hover:bg-[#111111]/90"
+                            >
+                                Go to Login
+                                <ArrowRight size={16} />
+                            </Link>
+                            <button
+                                onClick={() => setStep('form')}
+                                className="w-full rounded-full border border-black/[0.08] bg-[#f9f9f9] px-6 py-3.5 text-[13px] font-semibold text-[#111111] transition-all duration-300 hover:border-[#b76e79]/30 hover:text-[#b76e79]"
+                            >
+                                Use a different email
+                            </button>
+                        </div>
+
+                        <div className="mt-6 pt-6 border-t border-black/[0.04]">
+                            <p className="text-[12px] text-[#111111]/40">
+                                Didn&apos;t receive? Check spam folder or{' '}
+                                <button onClick={() => setStep('form')} className="text-[#b76e79] font-semibold hover:underline">
+                                    try again
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-luxury-cream flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-md w-full">
-                <div className="bg-white rounded-2xl shadow-2xl p-8 border border-luxury-gold/10">
-                    <div className="text-center mb-8">
-                        <div className="inline-block p-4 bg-luxury-cream rounded-full mb-4">
-                            <UserPlus className="text-luxury-gold" size={32} />
-                        </div>
-                        <h2 className="text-3xl font-serif font-bold text-luxury-black">
-                            Create Account
-                        </h2>
-                        <p className="text-luxury-gray mt-2">
-                            Join Tuhfina Creations today
-                        </p>
-                    </div>
+        <div className="min-h-screen bg-[#f9f9f9] flex items-center justify-center px-4 py-12">
+            <div className="w-full max-w-[420px]">
+                <div className="text-center mb-8">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#b76e79] mb-3">Join Us</p>
+                    <h1 className="text-3xl font-serif font-bold text-[#111111]">Create Account</h1>
+                    <p className="text-[#111111]/50 text-sm mt-2">Join Tuhfina Creations today</p>
+                </div>
 
+                <div className="bg-white rounded-[20px] border border-black/[0.04] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.06)]">
                     {error && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
-                            <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
-                            <p className="text-sm text-red-700">{error}</p>
+                        <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3">
+                            <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={16} />
+                            <p className="text-[13px] text-red-600 leading-relaxed">{error}</p>
                         </div>
                     )}
 
                     <form onSubmit={handleSignup} className="space-y-4">
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-luxury-black mb-1">
-                                Email Address
+                            <label htmlFor="email" className="block text-[13px] font-semibold text-[#111111] mb-2">
+                                Email
                             </label>
-                            <div className="relative group">
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-luxury-gray/40 group-focus-within:text-luxury-gold transition-colors">
-                                    <Mail size={18} />
-                                </div>
+                            <div className="relative">
+                                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#111111]/30" />
                                 <input
                                     id="email"
                                     type="email"
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="input-luxury pl-12"
-                                    placeholder="Enter your email"
+                                    className="w-full rounded-full border border-black/[0.08] bg-[#f9f9f9] pl-11 pr-4 py-3 text-sm text-[#111111] outline-none transition-all duration-300 focus:border-[#b76e79] focus:ring-2 focus:ring-[#b76e79]/10"
+                                    placeholder="your@email.com"
                                     autoComplete="email"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-luxury-black mb-1">
+                            <label htmlFor="password" className="block text-[13px] font-semibold text-[#111111] mb-2">
                                 Password
                             </label>
-                            <div className="relative group">
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-luxury-gray/40 group-focus-within:text-luxury-gold transition-colors">
-                                    <Key size={18} />
-                                </div>
+                            <div className="relative">
+                                <Key size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#111111]/30" />
                                 <input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="input-luxury pl-12 pr-12"
-                                    placeholder="Create a password"
+                                    className="w-full rounded-full border border-black/[0.08] bg-[#f9f9f9] pl-11 pr-12 py-3 text-sm text-[#111111] outline-none transition-all duration-300 focus:border-[#b76e79] focus:ring-2 focus:ring-[#b76e79]/10"
+                                    placeholder="Min 6 characters"
                                     autoComplete="new-password"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-luxury-gray hover:text-luxury-black transition-colors"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#111111]/30 hover:text-[#111111]/60 transition-colors"
                                 >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
                         </div>
 
                         <div>
-                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-luxury-black mb-1">
+                            <label htmlFor="confirmPassword" className="block text-[13px] font-semibold text-[#111111] mb-2">
                                 Confirm Password
                             </label>
-                            <div className="relative group">
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-luxury-gray/40 group-focus-within:text-luxury-gold transition-colors">
-                                    <Key size={18} />
-                                </div>
+                            <div className="relative">
+                                <Key size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#111111]/30" />
                                 <input
                                     id="confirmPassword"
                                     type={showPassword ? "text" : "password"}
                                     required
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className="input-luxury pl-12"
-                                    placeholder="Repeat your password"
+                                    className="w-full rounded-full border border-black/[0.08] bg-[#f9f9f9] pl-11 pr-4 py-3 text-sm text-[#111111] outline-none transition-all duration-300 focus:border-[#b76e79] focus:ring-2 focus:ring-[#b76e79]/10"
+                                    placeholder="Repeat password"
                                     autoComplete="new-password"
                                 />
                             </div>
@@ -152,28 +196,26 @@ function RegisterContent() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full btn-luxury flex items-center justify-center space-x-2 disabled:opacity-50 mt-6"
+                            className="w-full flex items-center justify-center gap-2 rounded-full bg-[#111111] px-6 py-3.5 text-[13px] font-bold uppercase tracking-wider text-white transition-all duration-300 hover:bg-[#111111]/90 disabled:opacity-50 mt-4"
                         >
                             {loading ? (
-                                <RefreshCcw className="animate-spin" size={20} />
+                                <RefreshCcw className="animate-spin" size={16} />
                             ) : (
                                 <>
-                                    <span>Create Account</span>
-                                    <ArrowRight size={20} />
+                                    Create Account
+                                    <ArrowRight size={16} />
                                 </>
                             )}
                         </button>
                     </form>
-
-                    <div className="mt-8 pt-8 border-t border-luxury-cream text-center">
-                        <p className="text-sm text-luxury-gray">
-                            Already have an account?{' '}
-                            <Link href="/login" className="text-luxury-gold font-semibold hover:text-luxury-darkGold">
-                                Sign In
-                            </Link>
-                        </p>
-                    </div>
                 </div>
+
+                <p className="text-center text-sm text-[#111111]/50 mt-6">
+                    Already have an account?{' '}
+                    <Link href="/login" className="font-semibold text-[#b76e79] hover:underline">
+                        Sign In
+                    </Link>
+                </p>
             </div>
         </div>
     );
@@ -181,7 +223,11 @@ function RegisterContent() {
 
 export default function RegisterPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-luxury-cream flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-luxury-gold"></div></div>}>
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#b76e79] border-t-transparent" />
+            </div>
+        }>
             <RegisterContent />
         </Suspense>
     );

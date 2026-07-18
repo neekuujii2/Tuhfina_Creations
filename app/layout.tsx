@@ -126,7 +126,7 @@ export default function RootLayout({
                     <CartProvider>
                         <ToastProvider>
                             <Navbar />
-                            <main className="min-h-screen pt-32">
+                            <main className="min-h-screen pt-[100px]">
                                 {children}
                             </main>
                             <Footer />
