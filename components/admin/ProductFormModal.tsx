@@ -42,6 +42,25 @@ export function ProductFormModal({
     onImageChange,
 }: ProductFormModalProps) {
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    const validate = () => {
+        const newErrors: Record<string, string> = {};
+        if (!formData.title.trim()) newErrors.title = 'Title is required';
+        if (!formData.description.trim()) newErrors.description = 'Description is required';
+        if (!formData.price || Number(formData.price) < 0) newErrors.price = 'Price must be non-negative';
+        if (!formData.category) newErrors.category = 'Category is required';
+        if (formData.stock === undefined || formData.stock === '' || Number(formData.stock) < 0) newErrors.stock = 'Stock must be a non-negative integer';
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        if (!validate()) {
+            return;
+        }
+        onSubmit(e);
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -50,16 +69,17 @@ export function ProductFormModal({
                 <DialogDescription>Fill out all required details of the jewellery product below.</DialogDescription>
             </DialogHeader>
 
-            <form onSubmit={onSubmit} className="space-y-5 max-h-[70vh] overflow-y-auto pr-2">
+            <form onSubmit={handleSubmit} className="space-y-5 max-h-[70vh] overflow-y-auto pr-2">
                 <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Title *</label>
                     <input
                         type="text"
                         required
                         value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="input-luxury"
+                        onChange={(e) => { setFormData({ ...formData, title: e.target.value }); if (errors.title) setErrors({ ...errors, title: '' }); }}
+                        className={`input-luxury ${errors.title ? 'border-red-500 focus:border-red-500' : ''}`}
                     />
+                    {errors.title && <p className="text-red-500 text-[10px] mt-1 font-semibold">{errors.title}</p>}
                 </div>
 
                 <div>
@@ -67,10 +87,11 @@ export function ProductFormModal({
                     <textarea
                         required
                         value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        className="input-luxury rounded-2xl"
+                        onChange={(e) => { setFormData({ ...formData, description: e.target.value }); if (errors.description) setErrors({ ...errors, description: '' }); }}
+                        className={`input-luxury rounded-2xl ${errors.description ? 'border-red-500 focus:border-red-500' : ''}`}
                         rows={3}
                     />
+                    {errors.description && <p className="text-red-500 text-[10px] mt-1 font-semibold">{errors.description}</p>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -82,9 +103,10 @@ export function ProductFormModal({
                             min="0"
                             step="0.01"
                             value={formData.price}
-                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                            className="input-luxury"
+                            onChange={(e) => { setFormData({ ...formData, price: e.target.value }); if (errors.price) setErrors({ ...errors, price: '' }); }}
+                            className={`input-luxury ${errors.price ? 'border-red-500 focus:border-red-500' : ''}`}
                         />
+                        {errors.price && <p className="text-red-500 text-[10px] mt-1 font-semibold">{errors.price}</p>}
                     </div>
 
                     <div>
@@ -94,9 +116,10 @@ export function ProductFormModal({
                             required
                             min="0"
                             value={formData.stock}
-                            onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })}
-                            className="input-luxury"
+                            onChange={(e) => { setFormData({ ...formData, stock: Number(e.target.value) }); if (errors.stock) setErrors({ ...errors, stock: '' }); }}
+                            className={`input-luxury ${errors.stock ? 'border-red-500 focus:border-red-500' : ''}`}
                         />
+                        {errors.stock && <p className="text-red-500 text-[10px] mt-1 font-semibold">{errors.stock}</p>}
                     </div>
                 </div>
 
@@ -104,8 +127,8 @@ export function ProductFormModal({
                     <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary mb-2">Category *</label>
                     <select
                         value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        className="bg-white border border-border rounded-full text-sm font-semibold px-4 py-2 w-full outline-none focus:border-accent"
+                        onChange={(e) => { setFormData({ ...formData, category: e.target.value }); if (errors.category) setErrors({ ...errors, category: '' }); }}
+                        className={`bg-white border border-border rounded-full text-sm font-semibold px-4 py-2 w-full outline-none focus:border-accent ${errors.category ? 'border-red-500' : ''}`}
                     >
                         {ALL_ADMIN_CATEGORIES.map((cat) => (
                             <option key={cat} value={cat}>
@@ -113,6 +136,7 @@ export function ProductFormModal({
                             </option>
                         ))}
                     </select>
+                    {errors.category && <p className="text-red-500 text-[10px] mt-1 font-semibold">{errors.category}</p>}
                 </div>
 
                 <div className="space-y-4 p-4 bg-luxury-warm/50 border border-accent/20 rounded-2xl">

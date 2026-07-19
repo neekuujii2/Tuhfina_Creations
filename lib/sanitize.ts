@@ -1,6 +1,6 @@
 import sanitizeHtml from "sanitize-html";
 
-const SAFE_OPTIONS: sanitizeHtml.IOptions = {
+const SAFE_OPTIONS: Record<string, any> = {
   allowedTags: [],
   allowedAttributes: {},
   disallowedTagsMode: "discard",

@@ -16,6 +16,7 @@ import {
     TrendingDown,
     LayoutDashboard,
     User,
+    FileText,
 } from 'lucide-react';
 import {
     BarChart,
@@ -32,6 +33,7 @@ import {
     Line,
     Legend,
 } from 'recharts';
+import { StatCardSkeleton, ChartSkeleton } from '@/components/admin/skeletons/AdminSkeletons';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -50,7 +52,7 @@ export default function AdminDashboard() {
         revalidateOnFocus: true,
         dedupingInterval: 5000,
     });
-    const { data: analytics } = useSWR(`/api/admin/analytics?period=${period}`, fetcher, {
+    const { data: analytics, error: analyticsError } = useSWR(`/api/admin/analytics?period=${period}`, fetcher, {
         revalidateOnFocus: true,
         dedupingInterval: 5000,
     });
@@ -74,6 +76,8 @@ export default function AdminDashboard() {
 
     const revenueChange = analytics?.revenueChange ?? 0;
     const ordersChange = analytics?.ordersChange ?? 0;
+
+    const isLoading = !products && !orders && !analytics;
 
     return (
         <div className="space-y-8">
@@ -100,85 +104,102 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    title="Total Products"
-                    value={String(products.length)}
-                    icon={<Package size={20} />}
-                    change={null}
-                />
-                <StatCard
-                    title="Total Orders"
-                    value={String(totalOrders)}
-                    icon={<ShoppingBag size={20} />}
-                    change={ordersChange}
-                />
-                <StatCard
-                    title="Pending Orders"
-                    value={String(pendingOrders)}
-                    icon={<AlertCircle size={20} />}
-                    change={null}
-                />
-                <StatCard
-                    title="Paid Revenue"
-                    value={`₹${totalRevenue.toLocaleString()}`}
-                    icon={<DollarSign size={20} />}
-                    change={revenueChange}
-                />
+                {isLoading ? (
+                    Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+                ) : (
+                    <>
+                        <StatCard
+                            title="Total Products"
+                            value={String(products.length)}
+                            icon={<Package size={20} />}
+                            change={null}
+                        />
+                        <StatCard
+                            title="Total Orders"
+                            value={String(totalOrders)}
+                            icon={<ShoppingBag size={20} />}
+                            change={ordersChange}
+                        />
+                        <StatCard
+                            title="Pending Orders"
+                            value={String(pendingOrders)}
+                            icon={<AlertCircle size={20} />}
+                            change={null}
+                        />
+                        <StatCard
+                            title="Paid Revenue"
+                            value={`₹${totalRevenue.toLocaleString()}`}
+                            icon={<DollarSign size={20} />}
+                            change={revenueChange}
+                        />
+                    </>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white border border-border rounded-[28px] p-6 shadow-soft">
-                    <h3 className="text-lg font-serif font-bold text-primary mb-4">Revenue Trend</h3>
-                    {analytics?.revenue?.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={analytics.revenue}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                                <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
-                                <Tooltip
-                                    contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}
-                                    formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
-                                />
-                                <Line type="monotone" dataKey="revenue" stroke="#d4af37" strokeWidth={2} dot={{ fill: '#d4af37', r: 4 }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="h-[300px] flex items-center justify-center text-text-secondary">No data available</div>
-                    )}
-                </div>
+                {isLoading ? (
+                    <>
+                        <ChartSkeleton />
+                        <ChartSkeleton />
+                    </>
+                ) : (
+                    <>
+                        <div className="bg-white border border-border rounded-[28px] p-6 shadow-soft">
+                            <h3 className="text-lg font-serif font-bold text-primary mb-4">Revenue Trend</h3>
+                            {analytics?.revenue?.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <LineChart data={analytics.revenue}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                        <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                                        <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}
+                                            formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, 'Revenue']}
+                                        />
+                                        <Line type="monotone" dataKey="revenue" stroke="#d4af37" strokeWidth={2} dot={{ fill: '#d4af37', r: 4 }} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-[300px] flex items-center justify-center text-text-secondary">No data available</div>
+                            )}
+                        </div>
 
-                <div className="bg-white border border-border rounded-[28px] p-6 shadow-soft">
-                    <h3 className="text-lg font-serif font-bold text-primary mb-4">Orders by Status</h3>
-                    {analytics?.ordersByStatus?.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={300}>
-                            <PieChart>
-                                <Pie
-                                    data={analytics.ordersByStatus}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={({ status, percent }) => `${status} (${(percent * 100).toFixed(0)}%)`}
-                                    outerRadius={100}
-                                    fill="#8884d8"
-                                    dataKey="count"
-                                    nameKey="status"
-                                >
-                                    {analytics.ordersByStatus.map((entry: any, index: number) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="h-[300px] flex items-center justify-center text-text-secondary">No data available</div>
-                    )}
-                </div>
+                        <div className="bg-white border border-border rounded-[28px] p-6 shadow-soft">
+                            <h3 className="text-lg font-serif font-bold text-primary mb-4">Orders by Status</h3>
+                            {analytics?.ordersByStatus?.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <PieChart>
+                                        <Pie
+                                            data={analytics.ordersByStatus}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            label={({ status, percent }: any) => `${status} (${((percent || 0) * 100).toFixed(0)}%)`}
+                                            outerRadius={100}
+                                            fill="#8884d8"
+                                            dataKey="count"
+                                            nameKey="status"
+                                        >
+                                            {analytics.ordersByStatus.map((entry: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-[300px] flex items-center justify-center text-text-secondary">No data available</div>
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
 
             <div className="bg-white border border-border rounded-[28px] p-6 shadow-soft">
                 <h3 className="text-lg font-serif font-bold text-primary mb-4">Top 5 Selling Products</h3>
-                {analytics?.topProducts?.length > 0 ? (
+                {isLoading ? (
+                    <ChartSkeleton />
+                ) : analytics?.topProducts?.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={analytics.topProducts}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -186,7 +207,7 @@ export default function AdminDashboard() {
                             <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
                             <Tooltip
                                 contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}
-                                formatter={(value: any, name: string) => {
+                                formatter={(value: any, name: any) => {
                                     if (name === 'revenue') return [`₹${Number(value).toLocaleString()}`, 'Revenue'];
                                     return [value, name];
                                 }}

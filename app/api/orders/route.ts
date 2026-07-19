@@ -4,6 +4,7 @@ import Order from '@/models/Order';
 import { requireAdmin, requireAuth } from '@/lib/auth/requireAdmin';
 import { updateOrderSchema, bulkUpdateOrderSchema } from '@/lib/validations';
 import { getCached, invalidateCache } from '@/lib/cache/redis';
+import { logAudit } from '@/lib/auditLog';
 
 const CACHE_KEY = 'orders:all';
 const ORDERS_TTL = 30;
@@ -68,11 +69,11 @@ export async function GET(request: Request) {
 
         const data = await getCached(
             `${CACHE_KEY}:${status || 'all'}:${page}:${limit}`,
-            () => ({ orders, total }),
+            async () => ({ orders, total }),
             ORDERS_TTL
         );
 
-        return NextResponse.json({ orders: data.orders, total: data.total, page, limit }, { status: 200 });
+        return NextResponse.json({ orders: (data as any).orders, total: (data as any).total, page, limit }, { status: 200 });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -133,6 +134,13 @@ export async function PUT(request: Request) {
 
             await invalidateCache(CACHE_KEY);
 
+            await logAudit({
+              adminEmail: auth.user.email,
+              action: 'order.bulk_status_update',
+              entityType: 'Order',
+              after: { orderIds, status, paymentStatus },
+            });
+
             return NextResponse.json({ modified: result.modifiedCount }, { status: 200 });
         }
 
@@ -164,6 +172,15 @@ export async function PUT(request: Request) {
 
         await invalidateCache(CACHE_KEY);
 
+        await logAudit({
+          adminEmail: auth.user.email,
+          action: 'order.status_update',
+          entityType: 'Order',
+          entityId: id,
+          before: { status: order.status },
+          after: { status: updateData.status },
+        });
+
         return NextResponse.json(updatedOrder, { status: 200 });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -187,6 +204,13 @@ export async function DELETE(request: Request) {
         await Order.findByIdAndUpdate(id, { $set: { isDeleted: true } });
 
         await invalidateCache(CACHE_KEY);
+
+        await logAudit({
+          adminEmail: auth.user.email,
+          action: 'order.soft_delete',
+          entityType: 'Order',
+          entityId: id,
+        });
 
         return NextResponse.json({ message: 'Order soft-deleted successfully' }, { status: 200 });
     } catch (error: any) {

@@ -7,10 +7,26 @@ import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/toast';
 import { CATEGORIES } from '@/lib/types';
-import { CategoryCard } from '@/components/admin/CategoryCard';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { SortableCategoryCard } from '@/components/admin/SortableCategoryCard';
+import { CategoryCardSkeleton } from '@/components/admin/skeletons/AdminSkeletons';
+import { EmptyState } from '@/components/admin/EmptyState';
 
 const jewelleryCollections = [
     'Rings',
@@ -44,7 +60,13 @@ export default function CategoriesPage() {
     const [formData, setFormData] = useState({ name: '', description: '', image: '' });
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
-    const [orderMap, setOrderMap] = useState<Record<string, number>>({});
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
     const handleCategoryImageUpdate = useCallback(async (categoryName: string, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -144,27 +166,29 @@ export default function CategoriesPage() {
         }
     };
 
-    const handleReorder = async (newCategories: any[]) => {
-        const updates = newCategories.map((cat, index) => ({
-            id: cat._id,
-            order: index,
-        }));
-        setOrderMap((prev) => {
-            const next = { ...prev };
-            updates.forEach((u) => { next[u.id] = u.order; });
-            return next;
-        });
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const oldIndex = categories.findIndex((c: any) => c._id === active.id);
+        const newIndex = categories.findIndex((c: any) => c._id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const newCategories = [...categories];
+        const [moved] = newCategories.splice(oldIndex, 1);
+        newCategories.splice(newIndex, 0, moved);
 
         await Promise.all(
-            updates.map((u) =>
+            newCategories.map((cat: any, index: number) =>
                 fetch('/api/categories', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: u.id, order: u.order }),
+                    body: JSON.stringify({ id: cat._id, order: index }),
                 })
             )
         );
         mutate('/api/categories');
+        toast('Category order updated', 'success');
     };
 
     if (authLoading) {
@@ -181,8 +205,19 @@ export default function CategoriesPage() {
 
     if (categoriesLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-transparent" />
+            <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                    <div>
+                        <div className="h-8 w-48 bg-luxury-gray/30 rounded-lg animate-pulse mb-2" />
+                        <div className="h-3 w-32 bg-luxury-gray/20 rounded-full animate-pulse" />
+                    </div>
+                    <div className="h-10 w-40 bg-luxury-gray/20 rounded-full animate-pulse" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <CategoryCardSkeleton key={i} />
+                    ))}
+                </div>
             </div>
         );
     }
@@ -223,45 +258,64 @@ export default function CategoriesPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categories.map((cat: any) => (
-                    <div key={cat._id} className="relative group">
-                        <CategoryCard
-                            name={cat.name}
-                            image={cat.image}
-                            onUpdate={(e) => handleCategoryImageUpdate(cat.name, e)}
-                            uploading={uploadingCategory === cat.name}
-                        />
-                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full bg-white border border-border"
-                                onClick={() => {
-                                    setEditingCategory(cat);
-                                    setFormData({ name: cat.name, description: cat.description || '', image: cat.image || '' });
-                                }}
-                            >
-                                Edit
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-full bg-white border border-red-200 text-red-600"
-                                onClick={() => {
-                                    setDeleteCategoryId(cat._id);
-                                    setDeleteConfirmOpen(true);
-                                }}
-                            >
-                                Delete
-                            </Button>
+            {categories.length === 0 ? (
+                <EmptyState
+                    icon="categories"
+                    title="No categories yet"
+                    description="Create your first category to organize your products."
+                    ctaLabel="Create Category"
+                    onCta={() => {
+                        setEditingCategory(null);
+                        setFormData({ name: '', description: '', image: '' });
+                        setShowCreateModal(true);
+                    }}
+                />
+            ) : (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={categories.map((c: any) => c._id)} strategy={verticalListSortingStrategy}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {categories.map((cat: any) => (
+                                <div key={cat._id} className="relative group">
+                                    <SortableCategoryCard
+                                        id={cat._id}
+                                        name={cat.name}
+                                        image={cat.image}
+                                        onUpdate={(e) => handleCategoryImageUpdate(cat.name, e)}
+                                        uploading={uploadingCategory === cat.name}
+                                    />
+                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition z-10">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 rounded-full bg-white border border-border"
+                                            onClick={() => {
+                                                setEditingCategory(cat);
+                                                setFormData({ name: cat.name, description: cat.description || '', image: cat.image || '' });
+                                            }}
+                                        >
+                                            Edit
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 rounded-full bg-white border border-red-200 text-red-600"
+                                            onClick={() => {
+                                                setDeleteCategoryId(cat._id);
+                                                setDeleteConfirmOpen(true);
+                                            }}
+                                        >
+                                            Delete
+                                        </Button>
+                                    </div>
+                                    {cat.description && (
+                                        <p className="text-[10px] text-text-secondary mt-2 text-center line-clamp-1">{cat.description}</p>
+                                    )}
+                                </div>
+                            ))}
                         </div>
-                        {cat.description && (
-                            <p className="text-[10px] text-text-secondary mt-2 text-center line-clamp-1">{cat.description}</p>
-                        )}
-                    </div>
-                ))}
-            </div>
+                    </SortableContext>
+                </DndContext>
+            )}
 
             <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
                 <DialogHeader onClose={() => setShowCreateModal(false)}>

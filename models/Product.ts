@@ -53,6 +53,12 @@ const ProductSchema = new Schema(
             required: false,
             maxlength: 160,
         },
+        status: {
+            type: String,
+            enum: ['draft', 'published', 'hidden'],
+            default: 'published',
+            index: true,
+        },
     },
     {
         timestamps: true,

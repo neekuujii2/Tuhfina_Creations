@@ -14,6 +14,15 @@ import {
     Menu,
     X,
     ChevronLeft,
+    Users,
+    FileText,
+    Store,
+    Image as ImageIcon,
+    UserPlus,
+    RotateCcw,
+    CreditCard,
+    Download,
+    HelpCircle,
 } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { Button } from '@/components/ui/button';
@@ -23,7 +32,16 @@ const navItems = [
     { href: '/admin/products', label: 'Products Catalog', icon: Package },
     { href: '/admin/orders', label: 'Orders Panel', icon: ShoppingBag },
     { href: '/admin/categories', label: 'Categories', icon: LayoutDashboard },
-    { href: '/admin/settings', label: 'Special Engines', icon: Settings },
+    { href: '/admin/customers', label: 'Customers', icon: Users },
+    { href: '/admin/audit-log', label: 'Audit Log', icon: FileText },
+    { href: '/admin/returns', label: 'Returns', icon: RotateCcw },
+    { href: '/admin/payments', label: 'Payments', icon: CreditCard },
+    { href: '/admin/reports', label: 'Reports', icon: Download },
+    { href: '/admin/support', label: 'Support', icon: HelpCircle },
+    { href: '/admin/content', label: 'Content', icon: ImageIcon },
+    { href: '/admin/team', label: 'Team', icon: UserPlus },
+    { href: '/admin/settings', label: 'Settings', icon: Settings },
+    { href: '/admin/settings/store', label: 'Store Settings', icon: Store },
 ] as const;
 
 export default function AdminLayout({
@@ -165,7 +183,7 @@ export default function AdminLayout({
                                 Management Portal
                             </h1>
                             <p className="text-xs text-text-secondary uppercase tracking-widest font-semibold">
-                                Tuhfina Control >{' '}
+                                Tuhfina Control &gt;{' '}
                                 <span className="text-accent font-bold">
                                     {navItems.find((item) =>
                                         pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))

@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { createCategorySchema } from '@/lib/validations';
 import { sanitizeFields } from '@/lib/sanitize';
 import { getCached, invalidateCache } from '@/lib/cache/redis';
+import { logAudit } from '@/lib/auditLog';
 
 const CACHE_KEY = 'categories:all';
 const CATEGORIES_TTL = 300;
@@ -69,6 +70,14 @@ export async function POST(request: Request) {
 
         await invalidateCache(CACHE_KEY);
 
+        await logAudit({
+          adminEmail: auth.user.email,
+          action: 'category.create',
+          entityType: 'Category',
+          entityId: category._id.toString(),
+          after: { name: category.name, description: category.description },
+        });
+
         return NextResponse.json(category, { status: 200 });
     } catch (error: any) {
         console.error('POST CATEGORIES ERROR:', error);
@@ -112,6 +121,14 @@ export async function DELETE(request: Request) {
 
         await invalidateCache(CACHE_KEY);
 
+        await logAudit({
+          adminEmail: auth.user.email,
+          action: 'category.delete',
+          entityType: 'Category',
+          entityId: deleted._id.toString(),
+          before: { name: deleted.name },
+        });
+
         return NextResponse.json({ message: 'Category deleted successfully' }, { status: 200 });
     } catch (error: any) {
         console.error('DELETE CATEGORY ERROR:', error);
@@ -154,6 +171,15 @@ export async function PUT(request: Request) {
         }
 
         await invalidateCache(CACHE_KEY);
+
+        await logAudit({
+          adminEmail: auth.user.email,
+          action: 'category.update',
+          entityType: 'Category',
+          entityId: category._id.toString(),
+          before: { name: category.name, description: category.description },
+          after: updateData,
+        });
 
         return NextResponse.json(category, { status: 200 });
     } catch (error: any) {

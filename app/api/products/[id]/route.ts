@@ -6,6 +6,7 @@ import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { updateProductSchema } from '@/lib/validations';
 import { sanitizeFields } from '@/lib/sanitize';
 import { invalidateCache } from '@/lib/cache/redis';
+import { logAudit } from '@/lib/auditLog';
 
 const CACHE_KEYS = {
   all: 'products:all',
@@ -83,6 +84,15 @@ export async function PUT(
         }
         await invalidateCache(invalidationKeys);
 
+        await logAudit({
+          adminEmail: auth.user.email,
+          action: 'product.update',
+          entityType: 'Product',
+          entityId: id,
+          before: { title: existing?.title, price: existing?.price, category: existing?.category },
+          after: { title: updatedProduct.title, price: updatedProduct.price, category: updatedProduct.category },
+        });
+
         return NextResponse.json(updatedProduct, { status: 200 });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -116,6 +126,14 @@ export async function DELETE(
         const invalidationKeys = [CACHE_KEYS.all];
         if (category) invalidationKeys.push(CACHE_KEYS.category(category));
         await invalidateCache(invalidationKeys);
+
+        await logAudit({
+          adminEmail: auth.user.email,
+          action: 'product.delete',
+          entityType: 'Product',
+          entityId: id,
+          before: { title: existing?.title, category: existing?.category },
+        });
 
         return NextResponse.json({ message: 'Product deleted successfully' }, { status: 200 });
     } catch (error: any) {

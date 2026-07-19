@@ -11,6 +11,8 @@ import { Order } from '@/lib/types';
 import { Package, Search, Filter, Download, ChevronDown, ChevronUp, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { OrderRow } from '@/components/admin/OrderRow';
+import { OrderRowSkeleton, StatCardSkeleton } from '@/components/admin/skeletons/AdminSkeletons';
+import { EmptyState } from '@/components/admin/EmptyState';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -39,7 +41,7 @@ export default function OrdersPage() {
         return `/api/orders?${params.toString()}`;
     };
 
-    const { data: ordersData, error: ordersError, isLoading: ordersLoading } = useSWR<{ orders: Order[]; total: number }>(buildQuery, fetcher, {
+    const { data: ordersData, error: ordersError, isLoading: ordersLoading } = useSWR<{ orders: Order[]; total: number }>(buildQuery(), fetcher, {
         revalidateOnFocus: true,
         dedupingInterval: 5000,
     });
@@ -113,8 +115,22 @@ export default function OrdersPage() {
 
     if (ordersLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-transparent" />
+            <div className="space-y-6">
+                <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                    <div>
+                        <div className="h-8 w-48 bg-luxury-gray/30 rounded-lg animate-pulse mb-2" />
+                        <div className="h-3 w-32 bg-luxury-gray/20 rounded-full animate-pulse" />
+                    </div>
+                    <div className="flex gap-3">
+                        <div className="h-10 w-64 bg-luxury-gray/20 rounded-full animate-pulse" />
+                        <div className="h-10 w-32 bg-luxury-gray/20 rounded-full animate-pulse" />
+                    </div>
+                </div>
+                <div className="space-y-6">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <OrderRowSkeleton key={i} />
+                    ))}
+                </div>
             </div>
         );
     }
@@ -246,10 +262,13 @@ export default function OrdersPage() {
             )}
 
             {orders.length === 0 ? (
-                <div className="text-center py-16 bg-surface border border-dashed border-border rounded-2xl p-8">
-                    <Package className="mx-auto mb-4 text-text-secondary" size={48} />
-                    <p className="text-text-secondary font-serif">No customer orders recorded yet.</p>
-                </div>
+                <EmptyState
+                    icon="orders"
+                    title="No orders yet"
+                    description="Orders will appear here once customers start purchasing."
+                    secondaryCtaLabel="View Products"
+                    onSecondaryCta={() => window.location.href = '/admin/products'}
+                />
             ) : (
                 <div className="space-y-6">
                     {orders.map((order) => (

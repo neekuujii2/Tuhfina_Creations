@@ -6,6 +6,7 @@ import { requireAdmin } from '@/lib/auth/requireAdmin';
 import { createProductSchema, updateProductSchema } from '@/lib/validations';
 import { sanitizeFields } from '@/lib/sanitize';
 import { getCached, invalidateCache } from '@/lib/cache/redis';
+import { logAudit } from '@/lib/auditLog';
 
 const CACHE_KEYS = {
   all: 'products:all',
@@ -108,6 +109,14 @@ export async function POST(request: Request) {
       CACHE_KEYS.category(data.category),
     ]);
 
+    await logAudit({
+      adminEmail: auth.user.email,
+      action: 'product.create',
+      entityType: 'Product',
+      entityId: newProduct._id.toString(),
+      after: { title: newProduct.title, category: newProduct.category, price: newProduct.price },
+    });
+
     return NextResponse.json(newProduct, { status: 201 });
   } catch (error: any) {
     console.error('CREATE PRODUCT ERROR:', error);
@@ -135,12 +144,20 @@ export async function DELETE(request: Request) {
       }
 
       const products = await Product.find({ _id: { $in: idArray } }).lean();
-      const categories = [...new Set(products.map((p: any) => p.category))];
+      const categorySet = new Set(products.map((p: any) => p.category));
+      const categories = Array.from(categorySet);
 
       await Product.deleteMany({ _id: { $in: idArray } });
 
       const invalidationKeys = [CACHE_KEYS.all, ...categories.map((cat) => CACHE_KEYS.category(cat))];
       await invalidateCache(invalidationKeys);
+
+      await logAudit({
+        adminEmail: auth.user.email,
+        action: 'product.bulk_delete',
+        entityType: 'Product',
+        after: { count: idArray.length, ids: idArray },
+      });
 
       return NextResponse.json({ message: 'Products deleted successfully', count: idArray.length }, { status: 200 });
     }
@@ -166,6 +183,14 @@ export async function DELETE(request: Request) {
     const invalidationKeys = [CACHE_KEYS.all];
     if (category) invalidationKeys.push(CACHE_KEYS.category(category));
     await invalidateCache(invalidationKeys);
+
+    await logAudit({
+      adminEmail: auth.user.email,
+      action: 'product.delete',
+      entityType: 'Product',
+      entityId: id,
+      before: { title: existing?.title, category: existing?.category },
+    });
 
     return NextResponse.json({ message: 'Product deleted successfully' }, { status: 200 });
   } catch (error: any) {

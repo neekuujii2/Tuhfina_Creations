@@ -44,9 +44,38 @@ export default function NotificationBell() {
 
     useEffect(() => {
         fetchNotifications();
-        // Poll every 30 seconds for "real-time feel"
-        const interval = setInterval(fetchNotifications, 30000);
-        return () => clearInterval(interval);
+        let interval: NodeJS.Timeout | null = null;
+
+        const startPolling = () => {
+            if (!interval) {
+                interval = setInterval(fetchNotifications, 30000);
+            }
+        };
+
+        const stopPolling = () => {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+            }
+        };
+
+        startPolling();
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchNotifications();
+                startPolling();
+            } else {
+                stopPolling();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            stopPolling();
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     useEffect(() => {
