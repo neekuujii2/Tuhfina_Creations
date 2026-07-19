@@ -3,10 +3,12 @@ export interface Category {
     name: string;
     image?: string;
     description?: string;
+    slug?: string;
+    order?: number;
 }
 
 export interface User {
-    uid: string;
+    id: string;
     email: string;
     role: 'ADMIN' | 'USER';
     createdAt: Date;
@@ -31,6 +33,9 @@ export interface Product {
     features?: string[];
     festivalOffer?: FestivalOffer;
     createdAt: Date;
+    stock?: number;
+    metaTitle?: string;
+    metaDescription?: string;
 }
 
 export interface CategoryOffer {
@@ -95,6 +100,12 @@ export interface Order {
         pincode: string;
         phone: string;
     };
+    history?: {
+        status: string;
+        changedAt: Date;
+        changedBy?: string;
+    }[];
+    isDeleted?: boolean;
 }
 
 export const CATEGORIES = [

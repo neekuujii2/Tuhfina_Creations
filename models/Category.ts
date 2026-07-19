@@ -24,6 +24,17 @@ const CategorySchema = new Schema(
             type: String,
             required: false,
         },
+        slug: {
+            type: String,
+            required: false,
+            unique: true,
+            lowercase: true,
+            trim: true,
+        },
+        order: {
+            type: Number,
+            default: 0,
+        },
     },
     {
         timestamps: true,

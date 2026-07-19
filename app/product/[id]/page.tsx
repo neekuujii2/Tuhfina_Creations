@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import CloudinaryImage from '@/components/ui/CloudinaryImage';
 import { Product, CategoryOffer, FestivalConfig } from '@/lib/types';
 import { productService } from '@/lib/services/productService';
 import { useCart } from '@/contexts/CartContext';
@@ -159,7 +160,7 @@ export default function ProductPage() {
                     <div className="sticky top-28">
                         <div className="relative h-96 lg:h-[500px] w-full bg-luxury-gray/10 rounded-[28px] overflow-hidden border border-border shadow-soft group img-zoom">
                             {product.images && product.images.length > 0 ? (
-                                <Image
+                                <CloudinaryImage
                                     src={product.images[selectedImage]}
                                     alt={product.title}
                                     fill

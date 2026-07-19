@@ -53,6 +53,27 @@ const OrderSchema = new Schema(
             pincode: String,
             phone: String,
         },
+        history: [
+            {
+                status: {
+                    type: String,
+                    required: true,
+                },
+                changedAt: {
+                    type: Date,
+                    default: Date.now,
+                    required: true,
+                },
+                changedBy: {
+                    type: String,
+                    required: false,
+                },
+            },
+        ],
+        isDeleted: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,

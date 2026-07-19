@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import CloudinaryImage from '@/components/ui/CloudinaryImage';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Heart, Clock, Sparkles } from 'lucide-react';
@@ -55,7 +56,7 @@ export default function ProductCard({ product, categoryOffers, festivalConfig }:
                 {/* Image Container */}
                 <div className="relative aspect-square w-full overflow-hidden bg-luxury-gray/10">
                     {displayImage ? (
-                        <Image
+                        <CloudinaryImage
                             src={displayImage}
                             alt={product.title}
                             fill

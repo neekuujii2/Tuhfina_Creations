@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { uploadImage } from '@/lib/cloudinary';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function POST(request: Request) {
     try {
+        const auth = await requireAdmin();
+        if (!auth.authorized) return auth.response;
+
         const formData = await request.formData();
         const files = formData.getAll('file') as File[];
 
@@ -11,7 +15,6 @@ export async function POST(request: Request) {
         }
 
         const uploadPromises = files.map(async (file) => {
-            // Convert file to base64 for Cloudinary upload
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const base64File = `data:${file.type};base64,${buffer.toString('base64')}`;

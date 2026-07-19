@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Notification from '@/models/Notification';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 
 export async function PATCH(
     request: Request,
     { params }: { params: { id: string } }
 ) {
     try {
+        const auth = await requireAdmin();
+        if (!auth.authorized) return auth.response;
+
         const { id } = params;
         await dbConnect();
 

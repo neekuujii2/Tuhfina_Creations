@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Notification from '@/models/Notification';
+import { requireAuth } from '@/lib/auth/requireAdmin';
 
 export async function GET() {
     try {
+        const auth = await requireAuth();
+        if (!auth.authorized) return auth.response;
+
         await dbConnect();
         const notifications = await Notification.find({})
             .sort({ createdAt: -1 })
-            .limit(50); // Get latest 50
+            .limit(50);
 
         const unreadCount = await Notification.countDocuments({ isRead: false });
 

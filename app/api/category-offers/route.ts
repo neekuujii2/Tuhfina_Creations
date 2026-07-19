@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import CategoryOffer from '@/models/CategoryOffer';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { categoryOfferSchema } from '@/lib/validations';
+import { sanitizeFields } from '@/lib/sanitize';
 
 export async function GET() {
     try {
@@ -14,20 +17,34 @@ export async function GET() {
 
 export async function POST(request: Request) {
     try {
-        await dbConnect();
+        const auth = await requireAdmin();
+        if (!auth.authorized) return auth.response;
+
         const body = await request.json();
-        const { category, discountPercent, fixedPrice, startAt, endAt, label, isFlash } = body;
+
+        const parsed = categoryOfferSchema.safeParse(body);
+        if (!parsed.success) {
+            return NextResponse.json(
+                { error: 'Validation failed', details: parsed.error.flatten().fieldErrors },
+                { status: 400 }
+            );
+        }
+
+        const data = parsed.data;
+        sanitizeFields(data, ['label']);
+
+        await dbConnect();
 
         const offer = await CategoryOffer.findOneAndUpdate(
-            { category },
+            { category: data.category },
             {
-                category,
-                discountPercent,
-                fixedPrice,
-                startAt: new Date(startAt),
-                endAt: new Date(endAt),
-                label,
-                isFlash,
+                category: data.category,
+                discountPercent: data.discountPercent,
+                fixedPrice: data.fixedPrice,
+                startAt: new Date(data.startAt),
+                endAt: new Date(data.endAt),
+                label: data.label,
+                isFlash: data.isFlash,
             },
             { upsert: true, new: true }
         );
@@ -40,6 +57,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
     try {
+        const auth = await requireAdmin();
+        if (!auth.authorized) return auth.response;
+
         await dbConnect();
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');

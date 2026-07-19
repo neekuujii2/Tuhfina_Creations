@@ -38,6 +38,21 @@ const ProductSchema = new Schema(
             label: String,
             isFlash: Boolean,
         },
+        stock: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+        metaTitle: {
+            type: String,
+            required: false,
+            maxlength: 60,
+        },
+        metaDescription: {
+            type: String,
+            required: false,
+            maxlength: 160,
+        },
     },
     {
         timestamps: true,
