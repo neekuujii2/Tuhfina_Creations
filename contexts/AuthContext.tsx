@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             password,
             name: email.split('@')[0],
             phone: phone || '',
-        });
+        } as any);
         if (error) {
             throw new Error(error.message || 'Signup failed');
         }
