@@ -63,7 +63,7 @@ export default function Navbar() {
     }, [announcements.length]);
 
     const isHome = pathname === '/';
-    const isTransparent = isHome && !scrolled;
+    const isTransparent = false;
 
     const filteredSuggestions = useMemo(() => {
         const query = searchValue.toLowerCase().trim();

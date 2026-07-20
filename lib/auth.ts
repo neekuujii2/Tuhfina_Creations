@@ -69,6 +69,12 @@ export const auth = betterAuth({
                 defaultValue: false,
                 input: false,
             },
+            phone: {
+                type: "string",
+                required: false,
+                defaultValue: "",
+                input: true,
+            },
         },
     },
     databaseHooks: {
@@ -97,6 +103,7 @@ export const auth = betterAuth({
     },
     advanced: {
         cookiePrefix: "tuhfina",
+        trustHost: true,
     },
 });
 

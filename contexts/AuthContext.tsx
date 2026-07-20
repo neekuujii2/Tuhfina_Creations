@@ -8,6 +8,7 @@ interface User {
     id: string;
     email: string;
     name?: string;
+    phone?: string;
     role: 'ADMIN' | 'USER';
     createdAt: string;
     isVerified?: boolean;
@@ -16,7 +17,7 @@ interface User {
 interface AuthContextType {
     user: User | null;
     loading: boolean;
-    signUp: (email: string, password: string, confirmPassword: string) => Promise<void>;
+    signUp: (email: string, password: string, confirmPassword: string, phone?: string) => Promise<void>;
     signIn: (email: string, password: string) => Promise<void>;
     signOut: () => Promise<void>;
     isAdmin: boolean;
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     id: su.id || su._id || '',
                     email: su.email || '',
                     name: su.name || '',
+                    phone: su.phone || '',
                     role: ADMIN_EMAILS.includes(email) ? 'ADMIN' : (su.role || 'USER'),
                     createdAt: su.createdAt || new Date().toISOString(),
                     isVerified: su.emailVerified || su.isVerified,
@@ -72,11 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshUser();
     }, [refreshUser]);
 
-    const signUp = useCallback(async (email: string, password: string, _confirmPassword: string) => {
+    const signUp = useCallback(async (email: string, password: string, _confirmPassword: string, phone?: string) => {
         const { error } = await authClient.signUp.email({
             email,
             password,
             name: email.split('@')[0],
+            phone: phone || '',
         });
         if (error) {
             throw new Error(error.message || 'Signup failed');

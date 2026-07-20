@@ -6,12 +6,13 @@ import { useState, FormEvent, Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserPlus, AlertCircle, Mail, Key, ArrowRight, RefreshCcw, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { UserPlus, AlertCircle, Mail, Key, ArrowRight, RefreshCcw, Eye, EyeOff, CheckCircle, Phone } from 'lucide-react';
 
 function RegisterContent() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [phone, setPhone] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -40,10 +41,21 @@ function RegisterContent() {
             return;
         }
 
+        if (!phone.trim()) {
+            setError('Mobile number is required');
+            return;
+        }
+
+        const phoneRegex = /^[6-9]\d{9}$/;
+        if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
+            setError('Please enter a valid 10-digit Indian mobile number');
+            return;
+        }
+
         setLoading(true);
 
         try {
-            await signUp(email, password, confirmPassword);
+            await signUp(email, password, confirmPassword, phone.replace(/\s/g, ''));
             setStep('verify-email');
         } catch (err: any) {
             setError(err.message || 'Signup failed. Please try again.');
@@ -144,6 +156,25 @@ function RegisterContent() {
                                     className="w-full rounded-full border border-black/[0.08] bg-[#f9f9f9] pl-11 pr-4 py-3 text-sm text-[#111111] outline-none transition-all duration-300 focus:border-[#b76e79] focus:ring-2 focus:ring-[#b76e79]/10"
                                     placeholder="your@email.com"
                                     autoComplete="email"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="phone" className="block text-[13px] font-semibold text-[#111111] mb-2">
+                                Mobile Number
+                            </label>
+                            <div className="relative">
+                                <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#111111]/30" />
+                                <input
+                                    id="phone"
+                                    type="tel"
+                                    required
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                    className="w-full rounded-full border border-black/[0.08] bg-[#f9f9f9] pl-11 pr-4 py-3 text-sm text-[#111111] outline-none transition-all duration-300 focus:border-[#b76e79] focus:ring-2 focus:ring-[#b76e79]/10"
+                                    placeholder="10-digit mobile number"
+                                    autoComplete="tel"
                                 />
                             </div>
                         </div>
