@@ -1,19 +1,8 @@
-import nodemailer from 'nodemailer';
-
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-});
+import { sendTransactionalEmail } from '@/lib/email';
 
 export const sendEmailNotification = async (order: any) => {
     const mailOptions = {
-        from: `"Tuhfina Creations Alert" <${process.env.SMTP_USER}>`,
-        to: process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',')[0] || process.env.SMTP_USER || 'Tuhfinacreations@gmail.com',
+        to: process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',')[0] || process.env.BREVO_SENDER_EMAIL || 'Tuhfinacreations@gmail.com',
         subject: '🛒 New Paid Order Received',
         html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
@@ -35,7 +24,7 @@ export const sendEmailNotification = async (order: any) => {
     };
 
     try {
-        await transporter.sendMail(mailOptions);
+        await sendTransactionalEmail(mailOptions);
         console.log(`Email notification sent for order ${order._id}`);
     } catch (error) {
         console.error('Error sending email notification:', error);
@@ -44,7 +33,6 @@ export const sendEmailNotification = async (order: any) => {
 
 export const sendOtpEmail = async (email: string, otp: string) => {
     const mailOptions = {
-        from: `"Tuhfina Creations" <${process.env.SMTP_USER}>`,
         to: email,
         subject: 'Your Tuhfina Creations Login Code',
         text: `Your verification code is: ${otp}\nThis code expires in 5 minutes.\nDo not share this code.`,
@@ -62,7 +50,7 @@ export const sendOtpEmail = async (email: string, otp: string) => {
     };
 
     try {
-        await transporter.sendMail(mailOptions);
+        await sendTransactionalEmail(mailOptions);
         console.log(`OTP email sent to ${email}`);
     } catch (error) {
         console.error('Error sending OTP email:', error);

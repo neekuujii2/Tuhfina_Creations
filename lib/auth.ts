@@ -1,28 +1,27 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { MongoClient } from "mongodb";
-import nodemailer from "nodemailer";
+import { sendTransactionalEmail } from "@/lib/email";
 
 const client = new MongoClient(process.env.DATABASE_URL!);
 const db = client.db();
-
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-});
 
 const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "Tuhfinacreations@gmail.com")
     .split(",")[0]
     .trim()
     .toLowerCase();
 
+const missingEnv = (key: string) => !process.env[key];
+if (missingEnv("BREVO_API_KEY")) console.warn("[Auth] BREVO_API_KEY is missing");
+if (missingEnv("BREVO_SENDER_EMAIL")) console.warn("[Auth] BREVO_SENDER_EMAIL is missing");
+if (missingEnv("BETTER_AUTH_URL")) console.warn("[Auth] BETTER_AUTH_URL is missing");
+if (missingEnv("BETTER_AUTH_SECRET")) console.warn("[Auth] BETTER_AUTH_SECRET is missing");
+if (missingEnv("DATABASE_URL")) console.warn("[Auth] DATABASE_URL is missing");
+
 export const auth = betterAuth({
     database: mongodbAdapter(db, { client }),
+    baseURL: process.env.BETTER_AUTH_URL,
+    secret: process.env.BETTER_AUTH_SECRET,
     emailAndPassword: {
         enabled: true,
         requireEmailVerification: true,
@@ -34,8 +33,7 @@ export const auth = betterAuth({
         autoSignInAfterVerification: true,
         expiresIn: 3600,
         async sendVerificationEmail({ user, url }) {
-            await transporter.sendMail({
-                from: `"Tuhfina Creations" <${process.env.SMTP_USER}>`,
+            await sendTransactionalEmail({
                 to: user.email,
                 subject: "Verify your email - Tuhfina Creations",
                 html: `
