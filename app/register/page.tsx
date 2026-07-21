@@ -17,9 +17,31 @@ function RegisterContent() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState<'form' | 'verify-email'>('form');
+    const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
     const { signUp, user, loading: authLoading } = useAuth();
     const router = useRouter();
+
+    const handleResendVerification = async () => {
+        setResendStatus('loading');
+        try {
+            const response = await fetch('/api/auth/resend-verification', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            });
+            if (response.ok) {
+                setResendStatus('success');
+                setTimeout(() => setResendStatus('idle'), 5000);
+            } else {
+                setResendStatus('error');
+            }
+        } catch {
+            setResendStatus('error');
+        }
+    };
 
     useEffect(() => {
         if (!authLoading && user) {
@@ -89,9 +111,29 @@ function RegisterContent() {
                         <p className="font-semibold text-[#111111] mb-6 bg-[#f9f9f9] rounded-full px-4 py-2.5 inline-block text-sm">
                             {email}
                         </p>
-                        <p className="text-[13px] text-[#111111]/50 mb-8 leading-relaxed">
+                        <p className="text-[13px] text-[#111111]/50 mb-6 leading-relaxed">
                             Click the link in the email to verify your account. The link expires in 1 hour.
                         </p>
+
+                        <div className="mb-8">
+                            {resendStatus === 'success' ? (
+                                <p className="text-xs text-green-600 font-semibold bg-green-50 rounded-full px-4 py-2 inline-block">
+                                    Verification email resent successfully!
+                                </p>
+                            ) : resendStatus === 'error' ? (
+                                <p className="text-xs text-red-600 font-semibold bg-red-50 rounded-full px-4 py-2 inline-block">
+                                    Failed to resend email. Please try again.
+                                </p>
+                            ) : (
+                                <button
+                                    onClick={handleResendVerification}
+                                    disabled={resendStatus === 'loading'}
+                                    className="text-xs font-semibold text-[#b76e79] hover:underline disabled:opacity-50"
+                                >
+                                    {resendStatus === 'loading' ? 'Resending...' : 'Resend verification email'}
+                                </button>
+                            )}
+                        </div>
 
                         <div className="space-y-3">
                             <Link

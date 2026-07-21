@@ -9,6 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { orderService } from '@/lib/services/orderService';
 import { Order } from '@/lib/types';
 import { Package, User, CheckCircle } from 'lucide-react';
+import ChangePasswordForm from '@/components/account/ChangePasswordForm';
+
 
 function DashboardContent() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -121,6 +123,19 @@ function DashboardContent() {
 
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Change Password Section */}
+        <div className="bg-luxury-cream rounded-lg p-8 mb-12">
+          <h2 className="text-2xl font-serif font-semibold text-luxury-black mb-6">
+            Account Settings
+          </h2>
+          <div className="border-t border-black/[0.04] pt-6">
+            <h3 className="text-lg font-serif font-semibold text-luxury-black mb-4">
+              Change Password
+            </h3>
+            <ChangePasswordForm />
           </div>
         </div>
 

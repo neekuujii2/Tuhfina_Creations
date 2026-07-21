@@ -22,6 +22,9 @@ interface AuthContextType {
     signOut: () => Promise<void>;
     isAdmin: boolean;
     refreshUser: () => Promise<void>;
+    changePassword: (currentPassword: string, newPassword: string, revokeOtherSessions?: boolean) => Promise<void>;
+    forgotPassword: (email: string) => Promise<void>;
+    resetPassword: (token: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -32,6 +35,9 @@ const AuthContext = createContext<AuthContextType>({
     signOut: async () => { },
     isAdmin: false,
     refreshUser: async () => { },
+    changePassword: async () => { },
+    forgotPassword: async () => { },
+    resetPassword: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -108,10 +114,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/login');
     }, [router]);
 
+    const changePassword = useCallback(async (currentPassword: string, newPassword: string, revokeOtherSessions?: boolean) => {
+        const { error } = await authClient.changePassword({
+            currentPassword,
+            newPassword,
+            revokeOtherSessions,
+        });
+        if (error) {
+            throw new Error(error.message || 'Failed to change password. Please check your current password.');
+        }
+    }, []);
+
+    const forgotPassword = useCallback(async (email: string) => {
+        const { error } = await authClient.forgetPassword({
+            email,
+            redirectTo: '/reset-password',
+        });
+        if (error) {
+            console.warn('[ForgotPassword] Swallow error for security:', error);
+        }
+    }, []);
+
+    const resetPassword = useCallback(async (token: string, newPassword: string) => {
+        const { error } = await authClient.resetPassword({
+            newPassword,
+            token,
+        });
+        if (error) {
+            throw new Error(error.message || 'Invalid or expired reset token. Please request a new link.');
+        }
+    }, []);
+
     const isAdmin = user?.role === 'ADMIN';
 
     return (
-        <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, isAdmin, refreshUser }}>
+        <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, isAdmin, refreshUser, changePassword, forgotPassword, resetPassword }}>
             {children}
         </AuthContext.Provider>
     );
