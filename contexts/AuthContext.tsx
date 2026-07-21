@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const forgotPassword = useCallback(async (email: string) => {
-        const { error } = await authClient.forgetPassword({
+        const { error } = await authClient.requestPasswordReset({
             email,
             redirectTo: '/reset-password',
         });
