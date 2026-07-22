@@ -123,11 +123,12 @@ export const auth = betterAuth({
     advanced: {
         cookiePrefix: "tuhfina",
         trustedOrigins: [
-            process.env.BETTER_AUTH_URL!,
+            process.env.BETTER_AUTH_URL,
+            "https://tuhfina-creations.vercel.app",
             ...(process.env.NODE_ENV !== "production" ? ["http://localhost:3000"] : [])
         ].filter(Boolean),
         ipAddress: {
-            ipAddressHeaders: ["x-forwarded-for"],
+            ipAddressHeaders: ["x-forwarded-for", "x-vercel-forwarded-for"],
         },
     },
 });
