@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
   staticPageGenerationTimeout: 300,
   experimental: {
     serverComponentsExternalPackages: ['mongodb', 'mongoose', 'firebase-admin', 'nodemailer', 'pdfkit', 'razorpay', 'bcryptjs'],

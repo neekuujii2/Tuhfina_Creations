@@ -167,12 +167,16 @@ Tuhfina_Creations/
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
+### Vercel + Cloudflare
 
 1. Push code to GitHub
-2. Import project in Vercel
-3. Add all environment variables listed in `.env.local` section
-4. Deploy
+2. Import project in Vercel and connect your custom domain
+3. Add all environment variables in Vercel Project Settings (Production + Preview)
+4. Point your domain's nameservers to Cloudflare (free plan)
+5. In Cloudflare: set SSL/TLS to "Full (strict)", enable "Always Use HTTPS", and enable caching for static assets
+6. Deploy on Vercel
+
+For step-by-step details, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 
 ### Build for Production
 
