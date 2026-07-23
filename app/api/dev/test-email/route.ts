@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px; max-width: 500px; margin: auto;">
           <h2 style="color: #2c3e50; text-align: center;">Test Email</h2>
-          <p style="font-size: 16px; color: #555; text-align: center;">This is a test email sent via Brevo from Tuhfina Creations.</p>
+          <p style="font-size: 16px; color: #555; text-align: center;">This is a test email sent through the primary Resend flow with Brevo fallback support.</p>
         </div>
       `,
     });

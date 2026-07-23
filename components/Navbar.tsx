@@ -7,7 +7,7 @@ import { useCart } from '@/contexts/CartContext';
 import { ShoppingCart, User, LayoutDashboard, Menu, Search, X, Sparkles, Heart, Home, Store, Info, Phone } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { motion, AnimatePresence, useMotionValueEvent, useScroll } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Drawer, DrawerHeader, DrawerBody } from '@/components/ui/drawer';
 
 const quickSearches = ['Rings', 'Bracelets', 'Wedding Collection', 'Daily Wear', 'Necklaces', 'Earrings'];

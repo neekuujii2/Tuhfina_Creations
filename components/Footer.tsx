@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -122,7 +120,7 @@ function PaymentBadge({ label }: { label: string }) {
 
 function FooterColumnList({ column, index }: { column: FooterColumn; index: number }) {
     return (
-        <div style={{ animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both` }}>
+        <div className="animate-fade-in-up" style={{ animationDelay: `${index * 100}ms` }}>
             <h4 className="text-xs font-bold uppercase tracking-[0.24em] text-accent mb-6">{column.title}</h4>
             <ul className="space-y-4 text-sm text-text-secondary">
                 {column.links.map((link) => (
@@ -233,12 +231,6 @@ export default function Footer() {
                 </div>
             </div>
 
-            <style jsx>{`
-                @keyframes fadeInUp {
-                    from { opacity: 0; transform: translateY(20px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-            `}</style>
         </footer>
     );
 }

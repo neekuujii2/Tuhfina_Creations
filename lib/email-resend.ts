@@ -1,34 +1,44 @@
 import { Resend } from 'resend';
 
-export interface SendTransactionalEmailOptions {
+export interface SendViaResendOptions {
   to: string;
   subject: string;
   html: string;
 }
 
-export const sendTransactionalEmail = async ({
+const normalizeTo = (value: string) => value.trim().toLowerCase();
+
+export async function sendViaResend({
   to,
   subject,
   html,
-}: SendTransactionalEmailOptions): Promise<void> => {
+}: SendViaResendOptions) {
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    throw new Error('[Email-Resend] RESEND_API_KEY is not configured');
+    throw new Error('[Email] RESEND_API_KEY is not configured');
   }
 
-  const resend = new Resend(apiKey);
-  const { data, error } = await resend.emails.send({
-    from: 'Tuhfina Creations <onboarding@resend.dev>',
-    to: [to],
-    subject,
-    html,
-  });
+  const senderEmail = process.env.RESEND_SENDER_EMAIL?.trim().toLowerCase() || 'onboarding@resend.dev';
 
-  if (error) {
-    console.error('[Email-Resend] Failed to send:', error);
-    throw new Error(`[Email-Resend] ${error.message}`);
+  try {
+    const resend = new Resend(apiKey);
+    const result = await resend.emails.send({
+      from: `Tuhfina Creations <${senderEmail}>`,
+      to: [normalizeTo(to)],
+      subject,
+      html,
+    });
+
+    if (result.error) {
+      console.error('[Resend] Failed:', result.error);
+      throw new Error(`[Resend] ${result.error.message}`);
+    }
+
+    console.info(`[Resend] Sent to ${to}, id: ${result.data?.id}`);
+    return result;
+  } catch (error) {
+    console.error('[Resend] Failed:', error);
+    throw error;
   }
-
-  console.info(`[Email-Resend] Sent to ${to}, messageId: ${data?.id}`);
-};
+}

@@ -85,7 +85,7 @@ function HeroBackground() {
                             <source src={src} type="video/mp4" />
                         </video>
                     ) : (
-                        <Image src={src} alt="" fill className="object-cover scale-105 animate-ken-burns" priority={i === 0} />
+                        <Image src={src} alt="" fill className="object-cover scale-105 animate-ken-burns" />
                     )}
                 </motion.div>
             ))}

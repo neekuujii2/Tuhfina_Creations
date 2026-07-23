@@ -1,13 +1,31 @@
 import type { Metadata } from "next";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { ToastProvider } from "@/components/ui/toast";
+import SmoothScrollProvider from "@/components/providers/SmoothScrollProvider";
 import Navbar from "@/components/Navbar";
+import dynamic from "next/dynamic";
 import Footer from "@/components/Footer";
-import WhatsAppFloat from "@/components/WhatsAppFloat";
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://tuhfina-creations.vercel.app'
+
+const inter = Inter({
+    subsets: ["latin"],
+    display: "swap",
+    variable: "--font-sans",
+    weight: ["400", "500", "600"],
+});
+
+const playfair = Playfair_Display({
+    subsets: ["latin"],
+    display: "swap",
+    variable: "--font-serif",
+    weight: ["400", "500", "600", "700"],
+});
+
+const WhatsAppFloat = dynamic(() => import("@/components/WhatsAppFloat"), { ssr: false });
 
 export const metadata: Metadata = {
     metadataBase: new URL(baseUrl),
@@ -112,7 +130,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
+        <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
             <body className="font-sans antialiased">
                 <script
                     type="application/ld+json"
@@ -122,18 +140,20 @@ export default function RootLayout({
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
                 />
-                <AuthProvider>
-                    <CartProvider>
-                        <ToastProvider>
-                            <Navbar />
-                            <main className="min-h-screen pt-[100px]">
-                                {children}
-                            </main>
-                            <Footer />
-                            <WhatsAppFloat />
-                        </ToastProvider>
-                    </CartProvider>
-                </AuthProvider>
+                <SmoothScrollProvider>
+                    <AuthProvider>
+                        <CartProvider>
+                            <ToastProvider>
+                                <Navbar />
+                                <main className="min-h-screen pt-[100px]">
+                                    {children}
+                                </main>
+                                <Footer />
+                                <WhatsAppFloat />
+                            </ToastProvider>
+                        </CartProvider>
+                    </AuthProvider>
+                </SmoothScrollProvider>
             </body>
         </html>
     );

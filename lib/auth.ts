@@ -3,8 +3,28 @@ import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import { MongoClient } from "mongodb";
 import { sendTransactionalEmail } from "@/lib/email";
 
-const client = new MongoClient(process.env.DATABASE_URL!);
-const db = client.db();
+let mongoClient: MongoClient | null = null;
+let mongoDb: ReturnType<MongoClient['db']> | null = null;
+
+const getMongoClient = () => {
+    if (!process.env.DATABASE_URL) {
+        throw new Error("[Auth] DATABASE_URL is not configured");
+    }
+
+    if (!mongoClient) {
+        mongoClient = new MongoClient(process.env.DATABASE_URL);
+    }
+
+    return mongoClient;
+};
+
+const getMongoDb = () => {
+    if (!mongoDb) {
+        mongoDb = getMongoClient().db();
+    }
+
+    return mongoDb;
+};
 
 const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "Tuhfinacreations@gmail.com")
     .split(",")[0]
@@ -18,8 +38,12 @@ if (missingEnv("BETTER_AUTH_URL")) console.warn("[Auth] BETTER_AUTH_URL is missi
 if (missingEnv("BETTER_AUTH_SECRET")) console.warn("[Auth] BETTER_AUTH_SECRET is missing");
 if (missingEnv("DATABASE_URL")) console.warn("[Auth] DATABASE_URL is missing");
 
+const databaseConfig = process.env.DATABASE_URL
+    ? mongodbAdapter(getMongoDb(), { client: getMongoClient() })
+    : undefined;
+
 export const auth = betterAuth({
-    database: mongodbAdapter(db, { client }),
+    ...(databaseConfig ? { database: databaseConfig } : {}),
     baseURL: process.env.BETTER_AUTH_URL,
     secret: process.env.BETTER_AUTH_SECRET,
     emailAndPassword: {
@@ -134,7 +158,7 @@ export const auth = betterAuth({
         cookiePrefix: "tuhfina",
         trustedOrigins: [
             process.env.BETTER_AUTH_URL,
-            "https://tuhfina-creations.vercel.app",
+            "https://tuhfina-creations-xi.vercel.app",
             ...(process.env.NODE_ENV !== "production" ? ["http://localhost:3000"] : [])
         ].filter(Boolean),
         ipAddress: {
