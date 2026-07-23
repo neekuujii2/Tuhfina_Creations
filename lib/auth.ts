@@ -50,10 +50,11 @@ export const auth = betterAuth({
         },
     },
     emailVerification: {
-        sendOnSignUp: true,
+        sendOnSignUp: false, // Disabled default to use our custom verification service
         autoSignInAfterVerification: true,
         expiresIn: 3600,
         async sendVerificationEmail({ user, url }) {
+            // Keep this as fallback or if better-auth manually triggers it, but typically it won't be called now
             await sendTransactionalEmail({
                 to: user.email,
                 subject: "Verify your email - Tuhfina Creations",
@@ -106,6 +107,15 @@ export const auth = betterAuth({
                     user.isVerified = false;
                     return { data: user };
                 },
+                async after(user) {
+                    // Trigger our custom email verification via Resend
+                    // We dynamically import to avoid circular dependencies or top-level await issues
+                    if (user && user.email) {
+                        import('@/email_verification/verification_service')
+                            .then(({ initiateVerification }) => initiateVerification(user.email))
+                            .catch(err => console.error('[Auth] Failed to trigger custom verification:', err));
+                    }
+                }
             },
             update: {
                 async after(data: any) {

@@ -25,7 +25,7 @@ function RegisterContent() {
     const handleResendVerification = async () => {
         setResendStatus('loading');
         try {
-            const response = await fetch('/api/auth/resend-verification', {
+            const response = await fetch('/api/custom-verification/resend', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
