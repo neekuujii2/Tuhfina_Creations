@@ -18,8 +18,8 @@ const config = {
         },
         extend: {
             fontFamily: {
-                serif: ['Cormorant Garamond', 'Georgia', 'serif'],
-                sans: ['General Sans', 'Inter', 'sans-serif'],
+                serif: ['var(--font-serif)', 'Georgia', 'serif'],
+                sans: ['var(--font-sans)', 'sans-serif'],
             },
             colors: {
                 background: 'var(--color-background)',

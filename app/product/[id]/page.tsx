@@ -166,6 +166,7 @@ export default function ProductPage() {
                                     fill
                                     className="object-cover"
                                     priority
+                                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 50vw"
                                     onError={(e) => {
                                         (e.target as HTMLImageElement).src = '/placeholder.png';
                                     }}

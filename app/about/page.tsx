@@ -130,7 +130,6 @@ function HeroBackground() {
                             alt=""
                             fill
                             className="object-cover scale-105 animate-ken-burns"
-                            priority={i === 0}
                         />
                     )}
                 </motion.div>

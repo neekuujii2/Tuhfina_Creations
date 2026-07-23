@@ -15,5 +15,5 @@ export default function CloudinaryImage(props: ImageProps) {
     ? optimizeCloudinaryImage(props.src)
     : props.src;
 
-  return <Image {...props} src={src} />;
+  return <Image {...props} src={src} alt={props.alt || ''} />;
 }
